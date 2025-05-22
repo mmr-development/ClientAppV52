@@ -188,8 +188,7 @@ const sendPushToken = async () => {
           projectId: "30572909-5581-4788-95a8-db5837a94828"
         });
         token = expoPushToken.data;
-        console.log('Expo push notification token:', token); // <-- Log token before sending
-        // Send token to backend
+        console.log('Expo push notification token:', token);
         await fetch(`${API_ENDPOINT}/users/push-token/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
