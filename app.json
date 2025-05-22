@@ -1,8 +1,9 @@
 {
   "expo": {
     "name": "ClientAppV52",
-    "slug": "ClientAppV52",
+    "slug": "clientappsdk52",
     "version": "1.0.0",
+    "projectId": "30572909-5581-4788-95a8-db5837a94828",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "clientappv52",
@@ -33,7 +34,9 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "expo-font"
+
     ],
     "experiments": {
       "typedRoutes": true

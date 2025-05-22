@@ -1,75 +1,396 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Dimensions, FlatList, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Sidebar } from '../../components/Sidebar';
+import { SidebarButtonWithLogo } from '../../components/SidebarButton';
+import { API_ENDPOINT, getPublicImageUrl } from '../../constants/API';
+import translations from '../../constants/locales';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { useSidebar } from '../../hooks/useSidebar';
+import { styles } from '../../styles';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const STORAGE_KEY = 'recent_addresses';
+const PRIMARY_ADDRESS_KEY = 'primary_address';
 
-export default function HomeScreen() {
+const { height: screenHeight } = Dimensions.get('window');
+
+export default function AddressAutocomplete() {
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [selected, setSelected] = useState<string>('');
+  const [recent, setRecent] = useState<string[]>([]);
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(false);
+  const { language, setLanguage } = useLanguage();
+  const [showRecent, setShowRecent] = useState(false);
+  const t = (key: keyof typeof translations["da"]) =>
+    (translations[language] as typeof translations["da"])[key];
+  const { sidebarVisible, toggleSidebar, closeSidebar } = useSidebar();
+  const router = useRouter();
+  const inputRef = useRef<TextInput>(null);
+  const [partnerHours, setPartnerHours] = useState<{ [partnerId: number]: any[] }>({});
+  const [restaurantDetails, setRestaurantDetails] = useState<{ [id: number]: any }>({});
+
+  const today = (new Date().getDay() + 6) % 7;
+
+  useEffect(() => {
+    AsyncStorage.getItem(PRIMARY_ADDRESS_KEY).then(addr => {
+      if (addr) {
+        setSelected(addr);
+        setQuery('');
+      }
+    });
+    AsyncStorage.getItem(STORAGE_KEY).then(data => {
+      if (data) {
+        const all = JSON.parse(data);
+        setRecent(all.slice(0, 5));
+      } 
+    });
+  }, []);
+
+  useEffect(() => {
+    const fetchHours = async () => {
+      const hoursMap: { [partnerId: number]: any[] } = {};
+      await Promise.all(
+        restaurants.map(async (r: any) => {
+          try {
+            const res = await fetch(`${API_ENDPOINT}/partners/${r.id}/hours/`);
+            const data = await res.json();
+            hoursMap[r.id] = data.hours;
+          } catch {
+            hoursMap[r.id] = [];
+          }
+        })
+      );
+      setPartnerHours(hoursMap);
+    };
+    if (restaurants.length > 0) fetchHours();
+  }, [restaurants]);
+
+  // Fetch extra details (min preparation time, min order value) for each restaurant
+  useEffect(() => {
+    if (!restaurants.length) {
+      setRestaurantDetails({});
+      return;
+    }
+    const fetchDetails = async () => {
+      const details: { [id: number]: any } = {};
+      await Promise.all(
+        restaurants.map(async (r: any) => {
+          try {
+            const res = await fetch(`${API_ENDPOINT}/partners/${r.id}/`);
+            if (res.ok) {
+              const data = await res.json();
+              details[r.id] = {
+                minPreparation: data.min_preparation_time_minutes,
+                maxPreparation: data.max_preparation_time_minutes,
+                minOrder: data.min_order_value,
+              };
+            }
+          } catch {
+            // ignore errors
+          }
+        })
+      );
+      setRestaurantDetails(details);
+    };
+    fetchDetails();
+  }, [restaurants]);
+
+  const saveRecent = async (address: string) => {
+    let allAddresses: string[] = [];
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      if (stored) allAddresses = JSON.parse(stored);
+    } catch {}
+    allAddresses = [address, ...allAddresses.filter(a => a !== address)];
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(allAddresses));
+    setRecent(allAddresses.slice(0, 5));
+  };
+
+  const fetchSuggestions = async (text: string) => {
+    setQuery(text);
+    if (text.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const url = `${API_ENDPOINT}/address-autocomplete?q=${encodeURIComponent(text)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setSuggestions(data);
+    } catch (e) {
+      setSuggestions([]);
+    }
+  };
+
+  const isValidAddress = (address: string) => {
+    if (!address) return false;
+    const parts = address.split(',');
+    if (parts.length < 2) return false;
+    const streetAndNumber = parts[0].trim();
+    const cityAndZip = parts[1].trim();
+    if (!/^\S.+\s+\d+.*$/.test(streetAndNumber)) return false;
+    if (!/^\d{4}\s+\S+/.test(cityAndZip)) return false;
+    return true;
+  };
+
+  const handleSelect = (item: any) => {
+    const addressText = item?.tekst || query;
+    if (!isValidAddress(addressText)) {
+      setQuery(addressText);
+      setSuggestions([]);
+      fetchSuggestions(addressText);
+      setTimeout(() => inputRef.current?.focus(), 0);
+      return;
+    }
+    setSelected(addressText);
+    setQuery(addressText);
+    setSuggestions([]);
+    saveRecent(addressText);
+  };
+
+  const handleRecentSelect = (address: string) => {
+    if (!isValidAddress(address)) {
+      setQuery(address);
+      fetchSuggestions(address);
+      setShowRecent(false);
+      setTimeout(() => inputRef.current?.focus(), 0);
+      return;
+    }
+    setSelected(address);
+    setQuery('');
+    AsyncStorage.setItem(PRIMARY_ADDRESS_KEY, address);
+  };
+
+  const handleRestaurantPress = (restaurant: any) => {
+    router.push({
+      pathname: '/menu',
+      params: {
+        partnerId: restaurant.id,
+      },
+    });
+  };
+
+  // Save the selected address to AsyncStorage
+  useEffect(() => {
+    if (!selected) {
+      setRestaurants([]);
+      return;
+    }
+    let city = '';
+    const lastPart = selected.split(',').pop()?.trim() || '';
+    const cityMatch = lastPart.match(/\d{4}\s*([A-Za-zæøåÆØÅ\- ]+)/);
+    if (cityMatch && cityMatch[1]) {
+      city = cityMatch[1].trim().split(' ')[0];
+    } else {
+      city = lastPart.split(' ')[1] || lastPart;
+    }
+    if (!city) return;
+    const url = `${API_ENDPOINT}/partners/?city=${encodeURIComponent(city)}`;
+    setLoadingRestaurants(true);
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const filtered = (data.partners || []).filter(
+          (p: any) => p.business_type?.name === 'Restaurant'
+        );
+        setRestaurants(filtered);
+        const allCategories = filtered.map((r: any) => r.category?.name).filter(Boolean);
+        console.log(allCategories)
+        setCategories(Array.from(new Set(allCategories)));
+      })
+      .catch((err) => {
+        setRestaurants([]);
+      })
+      .finally(() => setLoadingRestaurants(false));
+  }, [selected]);
+
+  const getStreetAndNumber = (address: string) => {
+    if (!address) return '';
+    return address.split(',')[0];
+  };
+
+  const filteredRestaurants = selectedCategory
+    ? restaurants.filter(r => r.category?.name === selectedCategory)
+    : restaurants;
+
+    // restaurant hours
+  const isOpenNow = (hours: any[]) => {
+    if (!hours) return false;
+    const todayHours = hours.find(h => h.day_of_week === today);
+    if (!todayHours) return false;
+    const now = new Date();
+    const [openH, openM] = todayHours.opens_at.split(':').map(Number);
+    const [closeH, closeM] = todayHours.closes_at.split(':').map(Number);
+    const openDate = new Date(now);
+    openDate.setHours(openH, openM, 0, 0);
+    const closeDate = new Date(now);
+    closeDate.setHours(closeH, closeM, 0, 0);
+    return now >= openDate && now <= closeDate;
+  };
+
+  const getTodayHoursString = (hours: any[]) => {
+    if (!hours) return '';
+    const todayHours = hours.find(h => h.day_of_week === today);
+    if (!todayHours) return '—';
+    return `${todayHours.opens_at.slice(0,5)} - ${todayHours.closes_at.slice(0,5)}`;
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <>
+      <Sidebar isVisible={sidebarVisible} onClose={closeSidebar} language={language} />
+      <SidebarButtonWithLogo onPress={toggleSidebar} />
+      <View style={styles.container}>
+        <View style={styles.autocompleteContainer}>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={query}
+            onChangeText={fetchSuggestions}
+            placeholder={t('searchAddress')}
+            onFocus={() => setShowRecent(true)}
+            onBlur={() => setTimeout(() => setShowRecent(false), 150)}
+          />
+          {showRecent && !query && recent.length > 0 && (
+            <View style={styles.suggestions}>
+              {recent.map(addr => (
+                <TouchableOpacity
+                  key={addr}
+                  style={styles.suggestion}
+                  onPress={() => {
+                    handleRecentSelect(addr);
+                    setShowRecent(false);
+                  }}
+                >
+                  <Text>{getStreetAndNumber(addr)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+          {suggestions.length > 0 && (
+            <FlatList
+              style={styles.suggestions}
+              data={suggestions}
+              keyExtractor={item => item.tekst}
+              renderItem={({ item }) => (
+                <TouchableOpacity onPress={() => handleSelect(item)} style={styles.suggestion}>
+                  <Text>{item.tekst}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
+        </View>
+        {selected && (
+          <View style={{ marginTop: 24 }}>
+            {categories.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 2, minHeight: 48, maxHeight: 48 }}
+                >
+                  {['All', ...categories].map(item => {
+                    const isSelected =
+                      (item === 'All' && !selectedCategory) ||
+                      (item !== 'All' && selectedCategory === item);
+                    return (
+                      <React.Fragment key={item}>
+                        <TouchableOpacity
+                          key={item}
+                          onPress={() =>
+                            item === 'All'
+                              ? setSelectedCategory(null)
+                              : setSelectedCategory(item)
+                          }
+                          style={[
+                            styles.categoryButton,
+                            isSelected && styles.categoryButtonActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.categoryButtonText,
+                              isSelected && styles.categoryButtonTextActive,
+                            ]}
+                          >
+                            {item}
+                          </Text>
+                        </TouchableOpacity>
+                      </React.Fragment>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+            {loadingRestaurants ? (
+              <ActivityIndicator size="large" color={styles.addressHistoryText.color} />
+            ) : filteredRestaurants.length === 0 ? (
+              <Text>{t('noSavedAddresses')}</Text>
+            ) : (
+              <FlatList
+                data={filteredRestaurants}
+                keyExtractor={item => item.id.toString()}
+                renderItem={({ item }) => {
+                  const hours = partnerHours[item.id];
+                  const open = isOpenNow(hours);
+                  const details = restaurantDetails[item.id] || {};
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.restaurantCard,
+                        !open && { opacity: 0.5 }
+                      ]}
+                      onPress={() => handleRestaurantPress(item)}
+                    >
+                      <View style={styles.restaurantCardRow}>
+                        {item.logo_url ? (
+                          <View style={styles.restaurantLogoWrapper}>
+                            <Image
+                              source={{ uri: getPublicImageUrl(item.logo_url) }}
+                              style={styles.restaurantLogoImage}
+                              resizeMode="contain"
+                            />
+                          </View>
+                        ) : null}
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.restaurantName}>{item.name}</Text>
+                          <Text style={styles.restaurantAddress}>
+                            {item.address.street} {item.address.address_detail}, {item.address.city}
+                          </Text>
+                          <Text style={{ color: open ? 'green' : 'gray', marginTop: 2 }}>
+                            {getTodayHoursString(hours)}
+                          </Text>
+                          {/* --- Prep time and min order value, each on its own line, styled like address --- */}
+                          {(details.minPreparation !== undefined || details.maxPreparation !== undefined) && (
+                            <Text style={styles.restaurantAddress}>
+                              {t('prepTime') || 'Prep time'}{' '}
+                              {details.minPreparation !== undefined && details.maxPreparation !== undefined
+                                ? `${details.minPreparation}-${details.maxPreparation} ${t('minutes') || 'minutes'}`
+                                : details.minPreparation !== undefined
+                                ? `${details.minPreparation} ${t('minutes') || 'minutes'}`
+                                : ''}
+                            </Text>
+                          )}
+                          {details.minOrder !== undefined && (
+                            <Text style={styles.restaurantAddress}>
+                              {t('minOrderValue') || 'Min. order:'} {details.minOrder} kr
+                            </Text>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+          </View>
+        )}
+        
+      </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
