@@ -2,7 +2,8 @@ import { FontAwesome, MaterialCommunityIcons, MaterialIcons } from '@expo/vector
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
 import { API_ENDPOINT } from '../../constants/API';
@@ -17,6 +18,8 @@ export default function TrackingScreen() {
   const [error, setError] = useState<string | null>(null);
   const [fallbackUsed, setFallbackUsed] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [courierLocation, setCourierLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationHistory, setLocationHistory] = useState<{ latitude: number; longitude: number }[]>([]);
 
   const { sidebarVisible, toggleSidebar, closeSidebar } = useSidebar();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -26,7 +29,6 @@ export default function TrackingScreen() {
   const t = (key: keyof typeof translations["da"]) =>
     (translations[language] as typeof translations["da"])[key] || key;
 
-  // Fetch order from API
   const fetchOrderFromApi = async (isInitial = false) => {
     if (fallbackUsed || isInitial || initialLoad) setLoading(true);
     setError(null);
@@ -39,6 +41,7 @@ export default function TrackingScreen() {
         },
       });
       const data = await res.json();
+      console.log('Fetched order data:', data);
       if (!res.ok) throw new Error(data.message || t('errorMsg'));
       let apiOrder = null;
       if (Array.isArray(data) && data.length > 0) {
@@ -113,6 +116,82 @@ export default function TrackingScreen() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fallbackUsed, order?.id]);
+
+  const wsRef = useRef<WebSocket | null>(null);
+  const trackingWsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    if (!order?.id) return;
+
+    const wsUrl = `wss://3a30-77-241-136-45.ngrok-free.app/ws/orders/${order.id}/status`;
+    wsRef.current = new WebSocket(wsUrl);
+
+    wsRef.current.onopen = () => {
+      console.log('[WebSocket] Connected:', wsUrl);
+    };
+
+    wsRef.current.onmessage = (event) => {
+      console.log('[WebSocket] Received:', event.data);
+      try {
+        const msg = JSON.parse(event.data);
+        if (
+          msg.type === "status_update" &&
+          msg.order_id === order.id &&
+          typeof msg.status === "string"
+        ) {
+          setOrder((prev: any) => ({
+            ...prev,
+            status: msg.status,
+            status_timestamp: msg.timestamp,
+          }));
+        }
+      } catch (e) {
+        console.log('[WebSocket] Error parsing message:', e);
+      }
+    };
+
+    wsRef.current.onerror = (err) => {
+      console.log('[WebSocket] Error:', err);
+    };
+
+    wsRef.current.onclose = () => {
+      console.log('[WebSocket] Closed');
+    };
+
+    const trackingWsUrl = "wss://3a30-77-241-136-45.ngrok-free.app/ws/tracking?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZWxpdmVyeV9pZCI6MjcsIm9yZGVyX2lkIjo0NywiY3JlYXRlZF9hdCI6IjIwMjUtMDUtMzFUMTQ6NDc6MjMuNTczWiIsImlhdCI6MTc0ODcwMjg0MywiZXhwIjoxNzQ4Nzg5MjQzfQ.71l3IsZ4yy6wDvc2ew6Bl93mJJKxDv63qJbtwvWu3G8";
+    trackingWsRef.current = new WebSocket(trackingWsUrl);
+
+    trackingWsRef.current.onopen = () => {
+      console.log('[Tracking WS] Connected:', trackingWsUrl);
+    };
+
+    trackingWsRef.current.onmessage = (event) => {
+      console.log('[Tracking WS] Received:', event.data);
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "location_update" && msg.payload) {
+          const { latitude, longitude } = msg.payload;
+          setCourierLocation({ latitude, longitude });
+          setLocationHistory(prev => [...prev, { latitude, longitude }]);
+        }
+      } catch (e) {
+        console.log('[Tracking WS] Error parsing message:', e);
+      }
+    };
+
+    trackingWsRef.current.onerror = (err) => {
+      console.log('[Tracking WS] Error:', err);
+    };
+
+    trackingWsRef.current.onclose = () => {
+      console.log('[Tracking WS] Closed');
+    };
+
+    return () => {
+      wsRef.current?.close();
+      trackingWsRef.current?.close();
+    };
+  }, [order?.id]);
 
   // Progress bar step mapping and icons
   const statusStep = (status: string) => {
@@ -253,7 +332,7 @@ export default function TrackingScreen() {
       <Sidebar isVisible={sidebarVisible} onClose={closeSidebar} language={language} />
       <SidebarButtonWithLogo onPress={toggleSidebar} />
       <View style={styles.container}>
-        {/* Map container placeholder */}
+        {/* Map container with courier marker */}
         <View
           style={{
             width: '100%',
@@ -265,11 +344,46 @@ export default function TrackingScreen() {
             alignItems: 'center',
             borderWidth: 1,
             borderColor: '#b1e2c6',
+            overflow: 'hidden',
           }}
         >
-          <Text style={{ color: '#888', fontWeight: 'bold' }}>
-            {t('mapComingSoon') || 'Map will appear here soon'}
-          </Text>
+          {courierLocation ? (
+            <MapView
+              style={{ width: '100%', height: '100%' }}
+              initialRegion={{
+                latitude: courierLocation.latitude,
+                longitude: courierLocation.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
+              region={{
+                latitude: courierLocation.latitude,
+                longitude: courierLocation.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              }}
+            >
+              <Marker
+                coordinate={courierLocation}
+                title="Courier"
+                description="Current courier location"
+                pinColor="#2cb673"
+              />
+              {locationHistory.length > 1 && (
+                <Polyline
+                  coordinates={locationHistory}
+                  strokeColor="#2cb673"
+                  strokeWidth={3}
+                />
+              )}
+            </MapView>
+          ) : (
+            <Image
+              source={require('../../assets/images/yourmom.png')}
+              style={{ width: 180, height: 80, resizeMode: 'contain' }}
+              accessibilityLabel="Logo"
+            />
+          )}
         </View>
         {/* Progress bar below map */}
         <OrderProgressBar step={currentStep} status={order.status} />
