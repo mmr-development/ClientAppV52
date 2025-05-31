@@ -307,7 +307,6 @@ const sendPushToken = async () => {
           start.setSeconds(0, 0);
         }
 
-        // If start is after closing, only ASAP
         if (start > closeDate) {
           setDeliveryOptions(['ASAP']);
           setDeliveryTime('ASAP');
@@ -315,7 +314,6 @@ const sendPushToken = async () => {
           return;
         }
 
-        // Build options: ASAP (first slot), then every 15 min until closing
         const options = [];
         let slot = new Date(start);
         let firstSlotLabel = slot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -348,10 +346,7 @@ const sendPushToken = async () => {
     return;
   }
 
-  // Parse address for backend
   const parsedAddress = parseAddress(address);
-
-  // --- Fetch coordinates from DAWA before sending order ---
   let coords = null;
   try {
     const proxyRes = await fetch(`${API_ENDPOINT}/address-autocomplete?q=${encodeURIComponent(address)}`);
@@ -443,12 +438,56 @@ const sendPushToken = async () => {
       body: JSON.stringify(payload),
     });
     const result = await response.json();
-    if (response.ok) {
-      await sendPushToken();
-      Alert.alert('Order placed!', 'Your order was successfully submitted.');
-      // Redirect to tracking page with orderId
-      router.replace({ pathname: '/(tabs)/tracking', params: { orderId: result.order_id } });
-    } else {
+if (response.ok) {
+  await sendPushToken();
+  await AsyncStorage.setItem('last_order_fallback', JSON.stringify({
+    id: result.id,
+    partner_id: Number(partnerId),
+    customer: {
+      first_name: userInfoFields.firstName,
+      last_name: userInfoFields.lastName,
+      email: userInfoFields.email,
+      phone_number: userInfoFields.phone,
+      address: {
+        country: "Denmark",
+        city: parsedAddress.city,
+        street: parsedAddress.street,
+        postal_code: parsedAddress.postal_code,
+        address_detail: parsedAddress.address_detail,
+        longitude: coords?.longitude ?? null,
+        latitude: coords?.latitude ?? null,
+      }
+    },
+    delivery_type: deliveryType,
+    status: 'Pending',
+    requested_delivery_time,
+    tip_amount: tipAmount,
+    total_amount: totalWithDelivery,
+    total_items: basket.reduce((sum, item) => sum + item.quantity, 0),
+    items: basket.map(item => ({
+      catalog_item_id: item.id,
+      quantity: item.quantity,
+      price: item.price,
+      name: item.name,
+    })),
+    payment: {
+      method:
+        payment === "card"
+          ? "credit_card"
+          : payment === "mobilepay"
+          ? "mobile_pay"
+          : payment === "bank"
+          ? "bank"
+          : "",
+      status: 'pending'
+    },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    delivery_fee: deliveryFee,
+  }));
+  Alert.alert('Order placed!', 'Your order was successfully submitted.');
+  router.replace('/(tabs)/tracking');
+} else {
       Alert.alert('Order failed', JSON.stringify(result));
     }
   } catch (err) {

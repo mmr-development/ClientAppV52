@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, FlatList, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, Image, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
 import { API_ENDPOINT, getPublicImageUrl } from '../../constants/API';
@@ -244,153 +244,157 @@ export default function AddressAutocomplete() {
     <>
       <Sidebar isVisible={sidebarVisible} onClose={closeSidebar} language={language} />
       <SidebarButtonWithLogo onPress={toggleSidebar} />
-      <View style={styles.container}>
-        <View style={styles.autocompleteContainer}>
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            value={query}
-            onChangeText={fetchSuggestions}
-            placeholder={t('searchAddress')}
-            onFocus={() => setShowRecent(true)}
-            onBlur={() => setTimeout(() => setShowRecent(false), 150)}
-          />
-          {showRecent && !query && recent.length > 0 && (
-            <View style={styles.suggestions}>
-              {recent.map(addr => (
-                <TouchableOpacity
-                  key={addr}
-                  style={styles.suggestion}
-                  onPress={() => {
-                    handleRecentSelect(addr);
-                    setShowRecent(false);
-                  }}
-                >
-                  <Text>{getStreetAndNumber(addr)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-          {suggestions.length > 0 && (
-            <FlatList
-              style={styles.suggestions}
-              data={suggestions}
-              keyExtractor={item => item.tekst}
-              renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => handleSelect(item)} style={styles.suggestion}>
-                  <Text>{item.tekst}</Text>
-                </TouchableOpacity>
-              )}
+      <SafeAreaView style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
+        <View style={styles.container}>
+          <View style={styles.autocompleteContainer}>
+            <TextInput
+              ref={inputRef}
+              style={styles.input}
+              value={query}
+              onChangeText={fetchSuggestions}
+              placeholder={t('searchAddress')}
+              onFocus={() => setShowRecent(true)}
+              onBlur={() => setTimeout(() => setShowRecent(false), 150)}
             />
-          )}
-        </View>
-        {selected && (
-          <View style={{ marginTop: 24 }}>
-            {categories.length > 0 && (
-              <View style={{ marginBottom: 16 }}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 2, minHeight: 48, maxHeight: 48 }}
-                >
-                  {['All', ...categories].map(item => {
-                    const isSelected =
-                      (item === 'All' && !selectedCategory) ||
-                      (item !== 'All' && selectedCategory === item);
-                    return (
-                      <React.Fragment key={item}>
-                        <TouchableOpacity
-                          key={item}
-                          onPress={() =>
-                            item === 'All'
-                              ? setSelectedCategory(null)
-                              : setSelectedCategory(item)
-                          }
-                          style={[
-                            styles.categoryButton,
-                            isSelected && styles.categoryButtonActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.categoryButtonText,
-                              isSelected && styles.categoryButtonTextActive,
-                            ]}
-                          >
-                            {item}
-                          </Text>
-                        </TouchableOpacity>
-                      </React.Fragment>
-                    );
-                  })}
-                </ScrollView>
+            {showRecent && !query && recent.length > 0 && (
+              <View style={styles.suggestions}>
+                {recent.map(addr => (
+                  <TouchableOpacity
+                    key={addr}
+                    style={styles.suggestion}
+                    onPress={() => {
+                      handleRecentSelect(addr);
+                      setShowRecent(false);
+                    }}
+                  >
+                    <Text>{getStreetAndNumber(addr)}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
-            {loadingRestaurants ? (
-              <ActivityIndicator size="large" color={styles.addressHistoryText.color} />
-            ) : filteredRestaurants.length === 0 ? (
-              <Text>{t('noSavedAddresses')}</Text>
-            ) : (
+            {suggestions.length > 0 && (
               <FlatList
-                data={filteredRestaurants}
-                keyExtractor={item => item.id.toString()}
-                renderItem={({ item }) => {
-                  const hours = partnerHours[item.id];
-                  const open = isOpenNow(hours);
-                  const details = restaurantDetails[item.id] || {};
-                  return (
-                    <TouchableOpacity
-                      style={[
-                        styles.restaurantCard,
-                        !open && { opacity: 0.5 }
-                      ]}
-                      onPress={() => handleRestaurantPress(item)}
-                    >
-                      <View style={styles.restaurantCardRow}>
-                        {item.logo_url ? (
-                          <View style={styles.restaurantLogoWrapper}>
-                            <Image
-                              source={{ uri: getPublicImageUrl(item.logo_url) }}
-                              style={styles.restaurantLogoImage}
-                              resizeMode="contain"
-                            />
-                          </View>
-                        ) : null}
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.restaurantName}>{item.name}</Text>
-                          <Text style={styles.restaurantAddress}>
-                            {item.address.street} {item.address.address_detail}, {item.address.city}
-                          </Text>
-                          <Text style={{ color: open ? 'green' : 'gray', marginTop: 2 }}>
-                            {getTodayHoursString(hours)}
-                          </Text>
-                          {/* --- Prep time and min order value, each on its own line, styled like address --- */}
-                          {(details.minPreparation !== undefined || details.maxPreparation !== undefined) && (
-                            <Text style={styles.restaurantAddress}>
-                              {t('prepTime') || 'Prep time'}{' '}
-                              {details.minPreparation !== undefined && details.maxPreparation !== undefined
-                                ? `${details.minPreparation}-${details.maxPreparation} ${t('minutes') || 'minutes'}`
-                                : details.minPreparation !== undefined
-                                ? `${details.minPreparation} ${t('minutes') || 'minutes'}`
-                                : ''}
-                            </Text>
-                          )}
-                          {details.minOrder !== undefined && (
-                            <Text style={styles.restaurantAddress}>
-                              {t('minOrderValue') || 'Min. order:'} {details.minOrder} kr
-                            </Text>
-                          )}
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                }}
+                style={styles.suggestions}
+                data={suggestions}
+                keyExtractor={item => item.tekst}
+                renderItem={({ item }) => (
+                  <TouchableOpacity onPress={() => handleSelect(item)} style={styles.suggestion}>
+                    <Text>{item.tekst}</Text>
+                  </TouchableOpacity>
+                )}
               />
             )}
           </View>
-        )}
-        
-      </View>
+          {selected && (
+            <View style={{ marginTop: 24, flex: 1 }}>
+              {categories.length > 0 && (
+                <View style={{ marginBottom: 16 }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ alignItems: 'center', paddingHorizontal: 2, minHeight: 48, maxHeight: 48 }}
+                  >
+                    {['All', ...categories].map(item => {
+                      const isSelected =
+                        (item === 'All' && !selectedCategory) ||
+                        (item !== 'All' && selectedCategory === item);
+                      return (
+                        <React.Fragment key={item}>
+                          <TouchableOpacity
+                            key={item}
+                            onPress={() =>
+                              item === 'All'
+                                ? setSelectedCategory(null)
+                                : setSelectedCategory(item)
+                            }
+                            style={[
+                              styles.categoryButton,
+                              isSelected && styles.categoryButtonActive,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.categoryButtonText,
+                                isSelected && styles.categoryButtonTextActive,
+                              ]}
+                            >
+                              {item}
+                            </Text>
+                          </TouchableOpacity>
+                        </React.Fragment>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+              {loadingRestaurants ? (
+                <ActivityIndicator size="large" color={styles.addressHistoryText.color} />
+              ) : filteredRestaurants.length === 0 ? (
+                <Text>{t('noSavedAddresses')}</Text>
+              ) : (
+                <FlatList
+                  data={filteredRestaurants}
+                  keyExtractor={item => item.id.toString()}
+                  style={{ flex: 1 }}
+                  contentContainerStyle={{ paddingBottom: 90 }} // <-- Increased padding
+                  renderItem={({ item }) => {
+                    const hours = partnerHours[item.id];
+                    const open = isOpenNow(hours);
+                    const details = restaurantDetails[item.id] || {};
+                    return (
+                      <TouchableOpacity
+                        style={[
+                          styles.restaurantCard,
+                          !open && { opacity: 0.5 }
+                        ]}
+                        onPress={() => handleRestaurantPress(item)}
+                      >
+                        <View style={styles.restaurantCardRow}>
+                          {item.logo_url ? (
+                            <View style={styles.restaurantLogoWrapper}>
+                              <Image
+                                source={{ uri: getPublicImageUrl(item.logo_url) }}
+                                style={styles.restaurantLogoImage}
+                                resizeMode="contain"
+                              />
+                            </View>
+                          ) : null}
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.restaurantName}>{item.name}</Text>
+                            <Text style={styles.restaurantAddress}>
+                              {item.address.street} {item.address.address_detail}, {item.address.city}
+                            </Text>
+                            <Text style={{ color: open ? 'green' : 'gray', marginTop: 2 }}>
+                              {getTodayHoursString(hours)}
+                            </Text>
+                            {/* --- Prep time and min order value, each on its own line, styled like address --- */}
+                            {(details.minPreparation !== undefined || details.maxPreparation !== undefined) && (
+                              <Text style={styles.restaurantAddress}>
+                                {t('prepTime') || 'Prep time'}{' '}
+                                {details.minPreparation !== undefined && details.maxPreparation !== undefined
+                                  ? `${details.minPreparation}-${details.maxPreparation} ${t('minutes') || 'minutes'}`
+                                  : details.minPreparation !== undefined
+                                  ? `${details.minPreparation} ${t('minutes') || 'minutes'}`
+                                  : ''}
+                              </Text>
+                            )}
+                            {details.minOrder !== undefined && (
+                              <Text style={styles.restaurantAddress}>
+                                {t('minOrderValue') || 'Min. order:'} {details.minOrder} kr
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+              )}
+            </View>
+          )}
+          
+        </View>
+      </SafeAreaView>
     </>
   );
 }

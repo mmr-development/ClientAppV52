@@ -29,12 +29,14 @@ const translations = {
     faqSignupQ: "Hvordan opretter jeg en bruger?",
     faqSignupA: 'Tryk på "Opret bruger" og udfyld formularen.',
     faqLangQ: "Hvordan ændrer jeg sproget?",
+    showingFallbackOrder: "Viser fallback ordreinfo (API utilgængelig)", // da
     faqLangA: "Tryk på sprogknappen og vælg dit sprog.",
     firstName: "Fornavn",
     lastName: "Efternavn",
     email: "Email",
     phone: "Telefonnummer",
     password: "Adgangskode",
+    unknown: "Ukendt", // da
     name: "Navn:",
     phoneLabel: "Telefon:",
     registrationSuccess: "Registrering gennemført",
@@ -97,7 +99,7 @@ const translations = {
     removeTip: "Fjern tip",
     orderDetailsTitle: "Dine leveringsoplysninger",
     userInfoTitle: "Hvem bestiller?",
-    deliveryAddressTitle: "Hvor skal vi levere maden?",
+    deliveryAddressTitle: "Maden bliver leveret til",
     addNoteTitle: "Noget chaufføren skal vide?",
     paymentMethodTitle: "Hvordan vil du betale?",
     tipTitle: "Vil du give drikkepenge?",
@@ -212,6 +214,7 @@ const translations = {
     navigation: "Navigation",
     home: "Home",
     orders: "Orders",
+    showingFallbackOrder: "Showing fallback order info (API unavailable)", // en
     profile: "Profile",
     paymentMethod: "Payment method",
     paymentCard: "Credit card",
@@ -228,6 +231,7 @@ const translations = {
     bankIBAN: "IBAN",
     bankSWIFT: "SWIFT/BIC",
     missingFieldsTitle: "Missing information",
+    unknown: "Unknown", // en
     missingFieldsMsg: "Please fill in the following fields:",
     tip: "Tip",
     custom: "Custom",
@@ -236,7 +240,7 @@ const translations = {
     removeTip: "Remove tip",
     orderDetailsTitle: "Your details for delivery",
     userInfoTitle: "Who is ordering?",
-    deliveryAddressTitle: "Where should we deliver your food?",
+    deliveryAddressTitle: "Food will be delivered to",
     addNoteTitle: "Anything the driver should know?",
     paymentMethodTitle: "How would you like to pay?",
     tipTitle: "Would you like to leave a tip?",

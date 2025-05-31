@@ -1,7 +1,9 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -13,9 +15,30 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  const router = useRouter();
+  const notificationListener = useRef<any>(null);
+
+  useEffect(() => {
+    // Listen for notifications when app is foregrounded
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      // Optionally show an in-app message or update UI
+    });
+
+    // Handle notification response (when user taps)
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data.orderId) {
+        router.push({ pathname: '/(tabs)/tracking', params: { orderId: data.orderId } });
+      }
+    });
+
+    return () => {
+      Notifications.removeNotificationSubscription(notificationListener.current);
+      Notifications.removeNotificationSubscription(responseListener);
+    };
+  }, []);
 
   if (!loaded) {
-    // Async font loading only occurs in development.
     return null;
   }
 

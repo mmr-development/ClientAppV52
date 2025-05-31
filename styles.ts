@@ -1577,4 +1577,36 @@ ordersModalCloseText: {
   fontSize: 16,
   letterSpacing: 0.5,
 },
+progressBarContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginHorizontal: 8,
+  marginTop: 18,
+  marginBottom: 8,
+},
+progressStep: {
+  alignItems: 'center',
+  width: 70,
+},
+progressStepLabel: {
+  fontSize: 12,
+  color: '#b1e2c6',
+  marginTop: 4,
+  textAlign: 'center',
+},
+progressStepLabelActive: {
+  color: '#2cb673',
+  fontWeight: 'bold',
+},
+progressBarLine: {
+  height: 4,
+  flex: 1,
+  backgroundColor: '#b1e2c6',
+  marginHorizontal: 2,
+  borderRadius: 2,
+},
+progressBarLineActive: {
+  backgroundColor: '#2cb673',
+},
 });

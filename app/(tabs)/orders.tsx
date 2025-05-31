@@ -81,10 +81,18 @@ export default function OrdersScreen() {
     fetchOrders();
   }, []);
 
-  // When clicking an order, show modal with order data
-  const handleOrderPress = (order: any) => {
+
+const handleOrderPress = (order: any) => {
+  console.log('Opening order from orders.tsx:', order);
+  if (['pending', 'ready'].includes(order.status)) {
+    router.push({
+      pathname: '/tracking',
+      params: { order: JSON.stringify(order) },
+    });
+  } else {
     setSelectedOrder(order);
-  };
+  }
+};
 
   // Make the ScrollView take the full height minus header/sidebar
   const windowHeight = Dimensions.get('window').height;
