@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, BackHandler, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
-import { API_ENDPOINT, getPublicImageUrl } from '../../constants/API';
+import * as api from '../../constants/API';
 import translations from '../../constants/locales';
 import { useBasket } from '../../contexts/BasketContext';
 import { useLanguage } from '../../contexts/LanguageContext'; // adjust path as needed
@@ -66,7 +66,7 @@ const CategoryItem = React.memo(
             const basketCount = basket.find((i: any) => i.id === product.id)?.quantity || 0;
             const hasImage = product.image_url && product.image_url.trim() !== '';
             const imageSource = hasImage
-              ? { uri: getPublicImageUrl(product.image_url) }
+              ? { uri: api.baseurl + 'public' + (product.image_url) }
               : require('../../assets/images/default.png'); // Adjust path if needed
 
             return (
@@ -80,7 +80,7 @@ const CategoryItem = React.memo(
                 <TouchableOpacity
                   onPress={e => {
                     e.stopPropagation?.();
-                    if (hasImage) setExpandedImage(getPublicImageUrl(product.image_url));
+                    if (hasImage) setExpandedImage(api.baseurl + 'public' + (product.image_url));
                   }}
                   activeOpacity={hasImage ? 0.8 : 1}
                   style={styles.menuProductImageWrapper}
@@ -252,22 +252,26 @@ export default function MenuScreen() {
   const { language, setLanguage } = useLanguage();
   const t = (key: keyof typeof translations["da"]) => (translations[language] as Record<string, string>)[key];
 
-  useEffect(() => {
+  useEffect(async () => {
     if (!partnerId) return;
     setLoading(true);
     setSelectedCategoryId(null);
-    fetch(`${API_ENDPOINT}/partners/${partnerId}/catalogs/full/?partner_id=${partnerId}`)
-      .then(res => res.json())
-      .then(data => {
-        setCatalog(data);
-        // Try to get min_order_value from partner
-        if (data?.partner?.min_order_value !== undefined) {
-          setMinOrderValue(Number(data.partner.min_order_value));
-        } else {
-          setMinOrderValue(null);
-        }
-      })
-      .finally(() => setLoading(false));
+    let data = await api.get(`partners/${partnerId}/catalogs/full/?partner_id=${partnerId}`).then((res) => {
+      if (res.status === 200) {
+        return res.data;
+      } else {
+        throw new Error(`Failed to fetch catalog: ${res.statusText}`);
+      }
+    })
+
+    setCatalog(data);
+    // Try to get min_order_value from partner
+    if (data?.partner?.min_order_value !== undefined) {
+      setMinOrderValue(Number(data.partner.min_order_value));
+    } else {
+      setMinOrderValue(null);
+    }
+    setLoading(false);
     setNoteItemId(null);
   }, [partnerId]);
 

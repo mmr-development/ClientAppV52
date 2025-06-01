@@ -1,11 +1,11 @@
 import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
-import { API_ENDPOINT } from '../../constants/API';
+import * as api from '../../constants/API';
 import translations from '../../constants/locales';
 import { useSidebar } from '../../hooks/useSidebar';
 import { styles as appStyles, colors } from '../../styles';
@@ -43,7 +43,7 @@ export default function OrdersScreen() {
       setError(null);
 
       const token = await AsyncStorage.getItem('auth_token');
-      const url = `${API_ENDPOINT}/orders/?customer_id=3`;
+      const url = `orders/?customer_id=3`;
       const fetchOptions: RequestInit = {
         headers: {
           accept: 'application/json',
@@ -53,15 +53,8 @@ export default function OrdersScreen() {
       console.log('Fetching orders with:', { url, fetchOptions });
 
       try {
-        const res = await fetch(url, fetchOptions);
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = text;
-        }
-        console.log('Server returned:', { status: res.status, data });
+        let data = await api.get(url);
+        console.log('Server returned:', { data: data });
 
         // If the response is { orders: [...] }, extract orders
         let ordersArr: any[] = [];

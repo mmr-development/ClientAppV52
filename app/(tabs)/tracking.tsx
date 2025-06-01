@@ -6,7 +6,7 @@ import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
-import { API_ENDPOINT } from '../../constants/API';
+import * as api from '../../constants/API';
 import translations from '../../constants/locales';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSidebar } from '../../hooks/useSidebar';
@@ -33,16 +33,14 @@ export default function TrackingScreen() {
     if (fallbackUsed || isInitial || initialLoad) setLoading(true);
     setError(null);
     try {
-      const token = await AsyncStorage.getItem('access_token');
-      const res = await fetch(`${API_ENDPOINT}/orders/?limit=1`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-      const data = await res.json();
+      let data = await api.get(`orders/?limit=1`).then((res) => {
+        if (res.status === 200) {
+          return res.data;
+        }else {
+          throw new Error(res.statusText || t('errorMsg'));
+        }
+      })
       console.log('Fetched order data:', data);
-      if (!res.ok) throw new Error(data.message || t('errorMsg'));
       let apiOrder = null;
       if (Array.isArray(data) && data.length > 0) {
         apiOrder = data[0];

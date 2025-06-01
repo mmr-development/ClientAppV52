@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, FlatList, Image, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
-import { API_ENDPOINT, getPublicImageUrl } from '../../constants/API';
+import * as api from '../../constants/API';
 import translations from '../../constants/locales';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSidebar } from '../../hooks/useSidebar';
@@ -57,8 +57,13 @@ export default function AddressAutocomplete() {
       await Promise.all(
         restaurants.map(async (r: any) => {
           try {
-            const res = await fetch(`${API_ENDPOINT}/partners/${r.id}/hours/`);
-            const data = await res.json();
+            const data = await api.get(`partners/${r.id}/hours/`).then((res) => {
+              if (res.staus == 200){
+                return res.data;
+              }else {
+                throw new Error('Failed to fetch hours');
+              }
+            });
             hoursMap[r.id] = data.hours;
           } catch {
             hoursMap[r.id] = [];
@@ -81,15 +86,18 @@ export default function AddressAutocomplete() {
       await Promise.all(
         restaurants.map(async (r: any) => {
           try {
-            const res = await fetch(`${API_ENDPOINT}/partners/${r.id}/`);
-            if (res.ok) {
-              const data = await res.json();
-              details[r.id] = {
-                minPreparation: data.min_preparation_time_minutes,
-                maxPreparation: data.max_preparation_time_minutes,
-                minOrder: data.min_order_value,
-              };
-            }
+            const data = await api.get(`partners/${r.id}/`).then((res) => {
+              if (res.status === 200) {
+                return res.data;
+              } else {
+                throw new Error('Failed to fetch restaurant details');
+              }
+            });
+            details[r.id] = {
+              minPreparation: data.min_preparation_time_minutes,
+              maxPreparation: data.max_preparation_time_minutes,
+              minOrder: data.min_order_value,
+            };
           } catch {
             // ignore errors
           }
@@ -118,9 +126,13 @@ export default function AddressAutocomplete() {
       return;
     }
     try {
-      const url = `${API_ENDPOINT}/address-autocomplete?q=${encodeURIComponent(text)}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      let data = await api.get(`address-autocomplete?q=${encodeURIComponent(text)}`).then((res) => {
+        if (res.status === 200) {
+          return res.data;
+        } else {
+          throw new Error('Failed to fetch suggestions');
+        }
+      });
       setSuggestions(data);
     } catch (e) {
       setSuggestions([]);
@@ -190,9 +202,8 @@ export default function AddressAutocomplete() {
       city = lastPart.split(' ')[1] || lastPart;
     }
     if (!city) return;
-    const url = `${API_ENDPOINT}/partners/?city=${encodeURIComponent(city)}`;
     setLoadingRestaurants(true);
-    fetch(url)
+    api.get(`partners/?city=${encodeURIComponent(city)}`)
       .then(res => res.json())
       .then(data => {
         const filtered = (data.partners || []).filter(

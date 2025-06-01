@@ -4,12 +4,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, BackHandler, Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'; // Add Pressable
 import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
-import { API_ENDPOINT } from '../../constants/API';
+import * as api from '../../constants/API';
 import translations from '../../constants/locales';
 import { useBasket } from '../../contexts/BasketContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -93,21 +93,25 @@ export default function CheckoutScreen() {
 
         if (!firstName || !lastName || !phone) {
           try {
-            const res = await fetch(`${API_ENDPOINT}/users/profile/?email=${encodeURIComponent(email)}`);
-            if (res.ok) {
-              const data = await res.json();
-              setUserInfoFields({
-                firstName: data.first_name || '',
-                lastName: data.last_name || '',
-                email: email || '',
-                phone: data.phone_number || '',
-              });
-              // Save for next time
-              if (data.first_name) await AsyncStorage.setItem('user_first_name', data.first_name);
-              if (data.last_name) await AsyncStorage.setItem('user_last_name', data.last_name);
-              if (data.phone_number) await AsyncStorage.setItem('user_phone', data.phone_number);
-              return;
-            }
+            const data = await api.get('users/profile/?email=' + encodeURIComponent(email)).then((res) => {
+              if (res.status === 200) {
+                return res.data;
+              }
+              else {
+                throw new Error('Failed to fetch user profile');
+              }
+            })
+            setUserInfoFields({
+              firstName: data.first_name || '',
+              lastName: data.last_name || '',
+              email: email || '',
+              phone: data.phone_number || '',
+            });
+            // Save for next time
+            if (data.first_name) await AsyncStorage.setItem('user_first_name', data.first_name);
+            if (data.last_name) await AsyncStorage.setItem('user_last_name', data.last_name);
+            if (data.phone_number) await AsyncStorage.setItem('user_phone', data.phone_number);
+            return;
           } catch (e) {
           }
         }
@@ -189,10 +193,9 @@ const sendPushToken = async () => {
         });
         token = expoPushToken.data;
         console.log('Expo push notification token:', token);
-        await fetch(`${API_ENDPOINT}/users/push-token/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, app_type: 'customer' }),
+        await api.post('users/push-token/', {
+          token,
+          app_type: 'customer',
         });
       }
     }
@@ -243,11 +246,14 @@ const sendPushToken = async () => {
     async function fetchMinPrepTime() {
       if (!partnerId) return;
       try {
-        const res = await fetch(`${API_ENDPOINT}/partners/${partnerId}/`);
-        if (res.ok) {
-          const data = await res.json();
-          setMinPrepTime(Number(data.min_preparation_time) || 30);
-        }
+        const data = await api.get(`partners/${partnerId}/`).then((res) => {
+          if (res.status === 200) {
+            return res.data;
+          } else {
+            throw new Error('Failed to fetch partner data');
+          }
+        });
+        setMinPrepTime(Number(data.min_preparation_time) || 30);
       } catch {
         setMinPrepTime(30);
       }
@@ -263,8 +269,13 @@ const sendPushToken = async () => {
       try {
         const todayIdx = getTodayDayIndex();
 
-        const res = await fetch(`${API_ENDPOINT}/partners/${partnerId}/hours/`);
-        const data = await res.json();
+        let data = await api.get(`partners/${partnerId}/hours/`).then((res) => {
+          if (res.status === 200) {
+            return res.data;
+          } else {
+            throw new Error('Failed to fetch partner hours');
+          }
+        });
         const today = Array.isArray(data)
           ? data.find((h: any) => h.day_of_week === todayIdx)
           : Array.isArray(data.hours)
@@ -349,8 +360,13 @@ const sendPushToken = async () => {
   const parsedAddress = parseAddress(address);
   let coords = null;
   try {
-    const proxyRes = await fetch(`${API_ENDPOINT}/address-autocomplete?q=${encodeURIComponent(address)}`);
-    const proxySuggestions = await proxyRes.json();
+    let proxySuggestions = await api.get(`address-autocomplete?q=${encodeURIComponent(address)}`).then((res) => {
+      if (res.status === 200) {
+        return res.data;
+      } else {
+        throw new Error('Failed to fetch address suggestions');
+      }
+    });
     if (Array.isArray(proxySuggestions) && proxySuggestions.length > 0) {
       const first = proxySuggestions[0];
       if (
@@ -432,64 +448,61 @@ const sendPushToken = async () => {
   };
 
   try {
-    const response = await fetch(`${API_ENDPOINT}/orders/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-if (response.ok) {
-  await sendPushToken();
-  await AsyncStorage.setItem('last_order_fallback', JSON.stringify({
-    id: result.id,
-    partner_id: Number(partnerId),
-    customer: {
-      first_name: userInfoFields.firstName,
-      last_name: userInfoFields.lastName,
-      email: userInfoFields.email,
-      phone_number: userInfoFields.phone,
-      address: {
-        country: "Denmark",
-        city: parsedAddress.city,
-        street: parsedAddress.street,
-        postal_code: parsedAddress.postal_code,
-        address_detail: parsedAddress.address_detail,
-        longitude: coords?.longitude ?? null,
-        latitude: coords?.latitude ?? null,
+    let result = await api.post('orders/', payload).then((res) => {
+      if (res.status === 201) {
+        return res.data;
+      } else {
+        throw new Error('Failed to create order');
       }
-    },
-    delivery_type: deliveryType,
-    status: 'Pending',
-    requested_delivery_time,
-    tip_amount: tipAmount,
-    total_amount: totalWithDelivery,
-    total_items: basket.reduce((sum, item) => sum + item.quantity, 0),
-    items: basket.map(item => ({
-      catalog_item_id: item.id,
-      quantity: item.quantity,
-      price: item.price,
-      name: item.name,
-    })),
-    payment: {
-      method:
-        payment === "card"
-          ? "credit_card"
-          : payment === "mobilepay"
-          ? "mobile_pay"
-          : payment === "bank"
-          ? "bank"
-          : "",
-      status: 'pending'
-    },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    delivery_fee: deliveryFee,
-  }));
-  Alert.alert('Order placed!', 'Your order was successfully submitted.');
-  router.replace('/(tabs)/tracking');
-} else {
-      Alert.alert('Order failed', JSON.stringify(result));
-    }
+    });
+    await sendPushToken();
+    await AsyncStorage.setItem('last_order_fallback', JSON.stringify({
+      id: result.id,
+      partner_id: Number(partnerId),
+      customer: {
+        first_name: userInfoFields.firstName,
+        last_name: userInfoFields.lastName,
+        email: userInfoFields.email,
+        phone_number: userInfoFields.phone,
+        address: {
+          country: "Denmark",
+          city: parsedAddress.city,
+          street: parsedAddress.street,
+          postal_code: parsedAddress.postal_code,
+          address_detail: parsedAddress.address_detail,
+          longitude: coords?.longitude ?? null,
+          latitude: coords?.latitude ?? null,
+        }
+      },
+      delivery_type: deliveryType,
+      status: 'Pending',
+      requested_delivery_time,
+      tip_amount: tipAmount,
+      total_amount: totalWithDelivery,
+      total_items: basket.reduce((sum, item) => sum + item.quantity, 0),
+      items: basket.map(item => ({
+        catalog_item_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        name: item.name,
+      })),
+      payment: {
+        method:
+          payment === "card"
+            ? "credit_card"
+            : payment === "mobilepay"
+            ? "mobile_pay"
+            : payment === "bank"
+            ? "bank"
+            : "",
+        status: 'pending'
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      delivery_fee: deliveryFee,
+    }));
+    Alert.alert('Order placed!', 'Your order was successfully submitted.');
+    router.replace('/(tabs)/tracking');
   } catch (err) {
     Alert.alert('Order failed', 'Could not send order to backend.');
   }
@@ -525,13 +538,14 @@ if (response.ok) {
         return;
       }
       try {
-        const res = await fetch(`${API_ENDPOINT}/partners/${partnerId}/`);
-        if (res.ok) {
-          const data = await res.json();
-          setDeliveryFee(Number(data.delivery_fee));
-        } else {
-          setDeliveryFee(0);
-        }
+        let data = await api.get(`partners/${partnerId}/`).then((res) => {
+          if (res.status === 200) {
+            return res.data;
+          } else {
+            throw new Error('Failed to fetch partner data');
+          }
+        });
+        setDeliveryFee(Number(data.delivery_fee));
       } catch {
         setDeliveryFee(0);
       }
@@ -576,9 +590,13 @@ if (response.ok) {
       return;
     }
     try {
-      const url = `${API_ENDPOINT}/address-autocomplete?q=${encodeURIComponent(text)}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      const data = await api.get(`address-autocomplete?q=${encodeURIComponent(text)}`).then((res) => {
+        if (res.status === 200) {
+          return res.data;
+        } else {
+          throw new Error('Failed to fetch address suggestions');
+        }
+      });
       setAddressSuggestions(data);
     } catch (e) {
       setAddressSuggestions([]);
@@ -663,8 +681,13 @@ if (response.ok) {
       try {
         const todayIdx = getTodayDayIndex();
         // Fetch all hours for partner, filter for today
-        const res = await fetch(`${API_ENDPOINT}/partners/${partnerId}/hours/`);
-        const data = await res.json();
+        let data = await api.get(`partners/${partnerId}/hours/`).then((res) => {
+          if (res.status === 200) {
+            return res.data;
+          } else {
+            throw new Error('Failed to fetch partner hours');
+          }
+        });
         console.log('hours API data:', data, 'todayIdx:', todayIdx);
 
       const today = Array.isArray(data)
@@ -981,9 +1004,13 @@ if (response.ok) {
                       return;
                     }
                     try {
-                      const url = `${API_ENDPOINT}/address-autocomplete?q=${encodeURIComponent(text)}`;
-                      const res = await fetch(url);
-                      const data = await res.json();
+                      let data = await api.get(`address-autocomplete?q=${encodeURIComponent(text)}`).then((res) => {
+                        if (res.status === 200) {
+                          return res.data;
+                        } else {
+                          throw new Error('Failed to fetch address suggestions');
+                        }
+                      });
                       setAddressSuggestions(data);
                     } catch {
                       setAddressSuggestions([]);

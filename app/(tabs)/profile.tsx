@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
-import { API_ENDPOINT } from '../../constants/API';
+import * as api from '../../constants/API';
 import translations from '../../constants/locales';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSidebar } from '../../hooks/useSidebar';
@@ -79,26 +79,24 @@ export default function ProfileScreen() {
   }, [loggedInEmail]);
 
   useEffect(() => {
-    if (userInfoModalVisible && loggedInEmail) {
-      (async () => {
+    const fetchUserInfo = async () => {
+      if (userInfoModalVisible && loggedInEmail) {
         const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
         if (!token) {
           setUserInfo(null);
           return;
         }
-        fetch(`${API_ENDPOINT}/users/profile/?email=${encodeURIComponent(loggedInEmail)}`, {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        })
-          .then(res => res.json())
-          .then(data => {
-            setUserInfo(data);
-          })
-          .catch(() => setUserInfo(null));
-      })();
-    }
+        let data = await api.get(`users/profile/?email=${encodeURIComponent(loggedInEmail)}`).then((res) => {
+          if (res.status === 200) {
+            return res.data;
+          } else {
+            Alert.alert('Error', 'Failed to fetch user info');
+          }
+        });
+        setUserInfo(data);
+      }
+    };
+    fetchUserInfo();
   }, [userInfoModalVisible, loggedInEmail]);
 
   useEffect(() => {
@@ -133,9 +131,14 @@ export default function ProfileScreen() {
       return;
     }
     try {
-      const url = `${API_ENDPOINT}/address-autocomplete?q=${encodeURIComponent(text)}`;
-      const res = await fetch(url);
-      const data = await res.json();
+      let data = await api.get(`address-autocomplete?q=${encodeURIComponent(text)}`).then((res) => {
+        if (res.status === 200) {
+          return res.data;
+        } else {
+          Alert.alert('Error', 'Failed to fetch address suggestions');
+          return [];
+        }
+      });
       setAddressSuggestions(data);
     } catch {
       setAddressSuggestions([]);
@@ -152,26 +155,28 @@ export default function ProfileScreen() {
   const handleSignIn = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_ENDPOINT}/auth/sign-in/?client_id=customer`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setLoggedInEmail(email);
-        await AsyncStorage.setItem(LOGGED_IN_EMAIL_KEY, email);
-        if (data.access_token) {
-          await AsyncStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
+      let data = await api.post('auth/sign-in/?client_id=courier', {
+        email,
+        password,
+      }).then((res) => {
+        if (res.status === 200) {
+          return res.data;
+        } else {
+          Alert.alert('Error', 'Failed to sign in');
+          throw new Error('Sign in failed');
         }
-        if (data.first_name) await AsyncStorage.setItem('user_first_name', data.first_name);
-        if (data.last_name) await AsyncStorage.setItem('user_last_name', data.last_name);
-        if (data.phone_number) await AsyncStorage.setItem('user_phone', data.phone_number);
-        setMode('none');
-      } else {
-        Alert.alert(t('loginFailed'), t('loginFailedMsg'));
+      });
+
+      setLoggedInEmail(email);
+      await AsyncStorage.setItem(LOGGED_IN_EMAIL_KEY, email);
+      if (data.access_token) {
+        await AsyncStorage.setItem(ACCESS_TOKEN_KEY, data.access_token);
       }
-    } catch (err) {
+      if (data.first_name) await AsyncStorage.setItem('user_first_name', data.first_name);
+      if (data.last_name) await AsyncStorage.setItem('user_last_name', data.last_name);
+      if (data.phone_number) await AsyncStorage.setItem('user_phone', data.phone_number);
+      setMode('none');
+  } catch (err) {
       Alert.alert(t('error'), t('errorMsg'));
     }
     setLoading(false);
@@ -180,27 +185,25 @@ export default function ProfileScreen() {
   const handleSignUp = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_ENDPOINT}/auth/sign-up/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          email,
-          phone_number: phone,
-          password,
-        }),
+      let data = await api.post('auth/sign-up/', {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone_number: phone,
+        password,
+      }).then((res) => {
+        if (res.status === 201) {
+          return res.data;
+        } else {
+          Alert.alert('Error', 'Failed to sign up');
+          throw new Error('Sign up failed');
+        }
       });
-      const data = await response.json();
-      if (response.ok) {
         if (data.first_name) await AsyncStorage.setItem('user_first_name', data.first_name);
         if (data.last_name) await AsyncStorage.setItem('user_last_name', data.last_name);
         if (data.phone_number) await AsyncStorage.setItem('user_phone', data.phone_number);
         Alert.alert(t('registrationSuccess'), t('registrationSuccessMsg'));
         setMode('login');
-      } else {
-        Alert.alert(t('registrationFailed'), t('registrationFailedMsg'));
-      }
     } catch (err) {
       Alert.alert(t('error'), t('errorMsg'));
     }
@@ -218,20 +221,22 @@ export default function ProfileScreen() {
         setLoading(false);
         return;
       }
-      const response = await fetch(`${API_ENDPOINT}/auth/sign-out/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+      await api.post('auth/sign-out/', {
+        refresh_token: refreshToken,
+      }).then((res) => {
+        if (res.status === 204) {
+          setLoggedInEmail(null);
+          AsyncStorage.removeItem(LOGGED_IN_EMAIL_KEY);
+          AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
+          AsyncStorage.removeItem(PRIMARY_ADDRESS_KEY);
+          AsyncStorage.removeItem(DELIVERY_HISTORY_KEY);
+          setDeliveryHistory([]);
+          setPrimaryAddress(null);
+          Alert.alert(t('loggedOut'), t('loggedOutMsg'));
+        } else {
+          Alert.alert('Error', 'Failed to log out');
+        }
       });
-      if (response.ok) {
-        await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
-        setLoggedInEmail(null);
-        await AsyncStorage.removeItem(LOGGED_IN_EMAIL_KEY);
-        await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
-        Alert.alert(t('loggedOut'), t('loggedOutMsg'));
-      } else {
-        Alert.alert(t('error'), t('logoutFailed'));
-      }
     } catch (err) {
       Alert.alert(t('error'), t('errorMsg'));
     }
@@ -241,25 +246,22 @@ export default function ProfileScreen() {
   const handleChangePassword = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_ENDPOINT}/auth/change-password/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          current_password: currentPassword,
-          new_password: newPassword,
-          confirm_password: confirmPassword,
-        }),
+      await api.post('auth/change-password/', {
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      }).then((res) => {
+        if (res.status === 200) {
+          Alert.alert(t('passwordChanged'), t('passwordChangedMsg'));
+          setShowChangePassword(false);
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        } else {
+          let data = res.data;
+          Alert.alert(t('error'), data.detail || t('passwordChangeFailed'));
+        }
       });
-      if (response.ok) {
-        Alert.alert(t('passwordChanged'), t('passwordChangedMsg'));
-        setShowChangePassword(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        const data = await response.json();
-        Alert.alert(t('error'), data.detail || t('passwordChangeFailed'));
-      }
     } catch (err) {
       Alert.alert(t('error'), t('errorMsg'));
     }
@@ -291,20 +293,23 @@ export default function ProfileScreen() {
         const phone = await AsyncStorage.getItem('user_phone');
         if (!firstName || !lastName || !phone) {
           try {
-            const res = await fetch(`${API_ENDPOINT}/users/profile/?email=${encodeURIComponent(email)}`);
-            if (res.ok) {
-              const data = await res.json();
-              setUserInfoFields({
-                firstName: data.first_name || '',
-                lastName: data.last_name || '',
-                email: email || '',
-                phone: data.phone_number || '',
-              });
-              if (data.first_name) await AsyncStorage.setItem('user_first_name', data.first_name);
-              if (data.last_name) await AsyncStorage.setItem('user_last_name', data.last_name);
-              if (data.phone_number) await AsyncStorage.setItem('user_phone', data.phone_number);
-              return;
-            }
+            let data = await api.get('users/profile/?email=' + encodeURIComponent(email)).then((res) => {
+              if(res.status === 200) {
+                return res.data;
+              } else{
+                throw new Error('Failed to fetch user info');
+              }
+            })
+            setUserInfoFields({
+              firstName: data.first_name || '',
+              lastName: data.last_name || '',
+              email: email || '',
+              phone: data.phone_number || '',
+            });
+            if (data.first_name) await AsyncStorage.setItem('user_first_name', data.first_name);
+            if (data.last_name) await AsyncStorage.setItem('user_last_name', data.last_name);
+            if (data.phone_number) await AsyncStorage.setItem('user_phone', data.phone_number);
+            return;
           } catch (e) {}
         }
         setUserInfoFields({
