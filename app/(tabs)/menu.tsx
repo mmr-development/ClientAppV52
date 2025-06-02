@@ -8,7 +8,7 @@ import { SidebarButtonWithLogo } from '../../components/SidebarButton';
 import * as api from '../../constants/API';
 import translations from '../../constants/locales';
 import { useBasket } from '../../contexts/BasketContext';
-import { useLanguage } from '../../contexts/LanguageContext'; // adjust path as needed
+import { useLanguage } from '../../contexts/LanguageContext';
 import { useSidebar } from '../../hooks/useSidebar';
 import { styles } from '../../styles';
 
@@ -294,7 +294,6 @@ export default function MenuScreen() {
     );
   }
 
-  // Extract unique categories from catalog data
   const allCategories = catalog.catalogs.flatMap((c: any) => c.categories || []);
   const uniqueCategories = allCategories.reduce((acc: any[], cat: any) => {
     if (!acc.some((c) => c.id === cat.id)) {
@@ -303,7 +302,6 @@ export default function MenuScreen() {
     return acc;
   }, []);
 
-  // Filter categories based on selectedCategoryId
   const filteredCategories = selectedCategoryId
     ? allCategories.filter((cat: any) => cat.id === selectedCategoryId)
     : allCategories;
@@ -357,10 +355,9 @@ export default function MenuScreen() {
           initialNumToRender={5}
           maxToRenderPerBatch={7}
           windowSize={1000}
-          contentContainerStyle={{ paddingBottom: 200, }} // Make sure this is >= basket bar height
+          contentContainerStyle={{ paddingBottom: 200, }}
         />
       </View>
-      {/* Basket Bar OUTSIDE the main flex container */}
       <View
         style={{
           position: 'absolute',
@@ -380,7 +377,7 @@ export default function MenuScreen() {
           shadowOpacity: 0.08,
           shadowOffset: { width: 0, height: -2 },
           shadowRadius: 8,
-          zIndex: 100, // ensure it's above other content
+          zIndex: 100,
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 40 }}>

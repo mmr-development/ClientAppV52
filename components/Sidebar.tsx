@@ -28,7 +28,7 @@ export function Sidebar({ isVisible, onClose, language }: SidebarProps) {
 
   const handlePageNavigation = (path: string) => {
     router.push(path as any);
-    onClose(); // Collapse the sidebar when navigating to a page
+    onClose();
   };
 
   const t = (key: keyof typeof translations["da"]) => {

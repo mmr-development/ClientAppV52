@@ -678,7 +678,6 @@ const sendPushToken = async () => {
           start.setSeconds(0, 0);
         }
 
-        // If start is after closing, only ASAP
         if (start > closeDate) {
           setDeliveryOptions(['ASAP']);
           setDeliveryTime('ASAP');
@@ -686,11 +685,10 @@ const sendPushToken = async () => {
           return;
         }
 
-        // Build options: ASAP (first slot), then every 15 min until closing
         const options = [];
         let slot = new Date(start);
         let firstSlotLabel = slot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        options.push('ASAP'); // ASAP means first slot
+        options.push('ASAP');
         slot = new Date(slot.getTime() + 15 * 60000);
 
         while (slot <= closeDate) {
@@ -715,7 +713,6 @@ const sendPushToken = async () => {
       <SidebarButtonWithLogo onPress={toggleSidebar} />
 
       <ScrollView contentContainerStyle={styles.checkoutScrollContainer}>
-        {/* --- Order Details Dropdown --- */}
         <View style={styles.checkoutCard}>
           <TouchableOpacity
             style={{
@@ -734,7 +731,6 @@ const sendPushToken = async () => {
           </TouchableOpacity>
           {orderDetailsOpen && (
             <View>
-              {/* User Info Row */}
               <TouchableOpacity
                 style={styles.orderDetailsSection}
                 onPress={openUserInfoModal}
@@ -750,8 +746,6 @@ const sendPushToken = async () => {
                   {userInfoFields.firstName} {userInfoFields.lastName} | {userInfoFields.email} | {userInfoFields.phone}
                 </Text>
               </TouchableOpacity>
-
-              {/* Delivery/Pickup Question and Toggle - moved above address */}
               <View style={styles.orderDetailsSection}>
                 <Text style={styles.orderDetailsSectionTitle}>
                   {deliveryType === 'pickup'
@@ -796,7 +790,6 @@ const sendPushToken = async () => {
                   />
                 </View>
               </View>
-
               {/* Address Row */}
               <TouchableOpacity
                 style={styles.orderDetailsSection}

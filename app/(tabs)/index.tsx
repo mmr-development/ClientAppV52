@@ -76,7 +76,6 @@ export default function AddressAutocomplete() {
     if (restaurants.length > 0) fetchHours();
   }, [restaurants]);
 
-  // Fetch extra details (min preparation time, min order value) for each restaurant
   useEffect(() => {
     if (!restaurants.length) {
       setRestaurantDetails({});
@@ -188,7 +187,6 @@ export default function AddressAutocomplete() {
     });
   };
 
-  // Save the selected address to AsyncStorage
   useEffect(() => {
     if (!selected) {
       setRestaurants([]);
@@ -205,7 +203,6 @@ export default function AddressAutocomplete() {
     if (!city) return;
     setLoadingRestaurants(true);
 
-    // Log the city and the URL being fetched
     const url = `partners/?city=${encodeURIComponent(city)}`;
     console.log('Fetching restaurants for city:', city, 'URL:', url);
 
@@ -356,7 +353,7 @@ export default function AddressAutocomplete() {
                   data={filteredRestaurants}
                   keyExtractor={item => item.id.toString()}
                   style={{ flex: 1 }}
-                  contentContainerStyle={{ paddingBottom: 90 }} // <-- Increased padding
+                  contentContainerStyle={{ paddingBottom: 90 }}
                   renderItem={({ item }) => {
                     const hours = partnerHours[item.id];
                     const open = isOpenNow(hours);

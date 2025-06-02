@@ -83,9 +83,7 @@ export default function OrdersScreen() {
 
 const handleOrderPress = (order: any) => {
   console.log('Opening order from orders.tsx:', order);
-  // Only open tracking for orders NOT delivered/cancelled/failed
   if (!['delivered', 'cancelled', 'failed'].includes(order.status)) {
-    // Pass the order as a param to tracking
     router.push({
       pathname: '/tracking',
       params: { order: JSON.stringify(order) },

@@ -23,16 +23,12 @@ export default function TrackingScreen() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [courierLocation, setCourierLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationHistory, setLocationHistory] = useState<{ latitude: number; longitude: number }[]>([]);
-
   const { sidebarVisible, toggleSidebar, closeSidebar } = useSidebar();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Language context
   const { language } = useLanguage();
   const t = (key: keyof typeof translations["da"]) =>
     (translations[language] as typeof translations["da"])[key] || key;
 
-  // Accept order from params if present
   useEffect(() => {
     if (params?.order) {
       try {
@@ -41,7 +37,6 @@ export default function TrackingScreen() {
         setFallbackUsed(false);
         setInitialLoad(false);
       } catch (e) {
-        // fallback to fetch if parsing fails
         fetchOrderFromApi(true);
       }
     } else {
@@ -50,12 +45,10 @@ export default function TrackingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.order]);
 
-  // Update fetchOrderFromApi to accept an orderId
   const fetchOrderFromApi = async (isInitial = false, orderId?: number) => {
     if (fallbackUsed || isInitial || initialLoad) setLoading(true);
     setError(null);
     try {
-      // If orderId is provided, fetch that specific order
       let url = orderId ? `orders/${orderId}/` : `orders/?limit=1`;
       let data = await api.get(url).then((res) => {
         if (res.status === 200) {
@@ -165,7 +158,6 @@ export default function TrackingScreen() {
     const wsUrl = `wss://aa3a-77-241-136-45.ngrok-free.app/ws/orders/${order.id}/status`;
     wsRef.current = new WebSocket(wsUrl);
 
-    // Wrap send to log outgoing messages
     const origSend = wsRef.current.send.bind(wsRef.current);
     wsRef.current.send = (data: any) => {
       console.log('[WebSocket] Sending:', data);
