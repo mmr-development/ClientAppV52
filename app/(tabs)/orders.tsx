@@ -10,7 +10,6 @@ import translations from '../../constants/locales';
 import { useSidebar } from '../../hooks/useSidebar';
 import { styles as appStyles, colors } from '../../styles';
 
-// Helper to calculate delivery fee
 function calculateDeliveryFee(order: any) {
   if (!order) return null;
   const itemsTotal = Array.isArray(order.items)
@@ -26,15 +25,11 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Modal state
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const router = useRouter();
-
-  // Sidebar state
   const { sidebarVisible, toggleSidebar, closeSidebar } = useSidebar();
 
-  // For translation, you can set language dynamically if needed
-  const language = 'da'; // or 'en', or from context/state
+  const language = 'da';
   const t = translations[language];
 
   useEffect(() => {
@@ -43,7 +38,7 @@ export default function OrdersScreen() {
       setError(null);
 
       const token = await AsyncStorage.getItem('auth_token');
-      const url = `orders/?customer_id=3`;
+      const url = `orders/`;
       const fetchOptions: RequestInit = {
         headers: {
           accept: 'application/json',
@@ -53,17 +48,28 @@ export default function OrdersScreen() {
       console.log('Fetching orders with:', { url, fetchOptions });
 
       try {
-        let data = await api.get(url);
-        console.log('Server returned:', { data: data });
-
-        // If the response is { orders: [...] }, extract orders
+        let response = await api.get(url);
+        console.log('Server returned:', { data: response });
         let ordersArr: any[] = [];
-        if (data && typeof data === 'object' && Array.isArray(data.orders)) {
-          ordersArr = data.orders;
-        } else if (Array.isArray(data)) {
-          ordersArr = data;
+        if (
+          response &&
+          typeof response === 'object' &&
+          response.data &&
+          typeof response.data === 'object' &&
+          response.data.data &&
+          Array.isArray(response.data.data.orders)
+        ) {
+          ordersArr = response.data.data.orders;
+        } else if (
+          response &&
+          typeof response === 'object' &&
+          response.data &&
+          Array.isArray(response.data.orders)
+        ) {
+          ordersArr = response.data.orders;
+        } else if (Array.isArray(response)) {
+          ordersArr = response;
         }
-        // Sort by created_at descending (newest first)
         ordersArr.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         setOrders(ordersArr);
       } catch (e: any) {
@@ -87,7 +93,6 @@ const handleOrderPress = (order: any) => {
   }
 };
 
-  // Make the ScrollView take the full height minus header/sidebar
   const windowHeight = Dimensions.get('window').height;
 
   return (
@@ -140,7 +145,6 @@ const handleOrderPress = (order: any) => {
             ))}
           </ScrollView>
         )}
-        {/* Modal for order details */}
         <Modal
           visible={!!selectedOrder}
           animationType="slide"
@@ -149,7 +153,6 @@ const handleOrderPress = (order: any) => {
         >
           <View style={appStyles.ordersModalOverlay}>
             <View style={appStyles.ordersModalWrapper}>
-              {/* Pinned order number at the top */}
               <View style={appStyles.ordersModalPinnedHeader}>
                 <Text style={appStyles.ordersModalPinnedOrderNumber}>
                   {t.order} #{selectedOrder?.id}

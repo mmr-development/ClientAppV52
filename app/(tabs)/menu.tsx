@@ -24,7 +24,6 @@ const CategoryItem = React.memo(
     lastAddedId: number | null;
     basket: any[];
   }) => {
-    // Add state for expanded image modal
     const [expandedImage, setExpandedImage] = useState<string | null>(null);
     const [checkAnim] = React.useState(() => new Animated.Value(0));
     const [localCount, setLocalCount] = React.useState(0);
@@ -67,7 +66,7 @@ const CategoryItem = React.memo(
             const hasImage = product.image_url && product.image_url.trim() !== '';
             const imageSource = hasImage
               ? { uri: api.baseurl + 'public' + (product.image_url) }
-              : require('../../assets/images/default.png'); // Adjust path if needed
+              : require('../../assets/images/default.png');
 
             return (
               <TouchableOpacity
@@ -76,7 +75,6 @@ const CategoryItem = React.memo(
                 onPress={() => onAddToBasket(product)}
                 activeOpacity={0.7}
               >
-                {/* Product Image */}
                 <TouchableOpacity
                   onPress={e => {
                     e.stopPropagation?.();
@@ -102,14 +100,12 @@ const CategoryItem = React.memo(
                     </Text>
                   ) : null}
                 </View>
-                {/* Reserve space for counter always */}
                 <View style={styles.menuProductCounter}>
                   {basketCount > 0 ? (
                     <Text style={styles.menuProductCounterText}>
                       {basketCount}
                     </Text>
                   ) : (
-                    // Empty space to reserve the layout
                     <View style={{ width: 24, height: 24 }} />
                   )}
                 </View>
@@ -120,7 +116,6 @@ const CategoryItem = React.memo(
           <Text style={{ color: '#888' }}>No products in this category.</Text>
         )}
 
-        {/* Expanded Image Modal */}
         <Modal
           visible={!!expandedImage}
           transparent
@@ -170,8 +165,6 @@ export default function MenuScreen() {
   const [catalog, setCatalog] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-
-  // Real basket state
   const { basket, setBasket, notes, setNotes, clearBasket } = useBasket();
   const [basketModalVisible, setBasketModalVisible] = useState(false);
   const [noteItemId, setNoteItemId] = useState<number | null>(null);
@@ -179,17 +172,15 @@ export default function MenuScreen() {
   const [minOrderValue, setMinOrderValue] = useState<number | null>(null);
   const router = useRouter();
 
-  // Handle Android hardware back button to go to index instead of closing app
   useEffect(() => {
     const onBackPress = () => {
-      router.replace('/'); // Go back to index.tsx
-      return true; // Prevent default behavior (closing the app)
+      router.replace('/');
+      return true;
     };
     const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => backHandler.remove();
   }, [router]);
 
-  // Only clear basket/notes if switching to a different restaurant
   useEffect(() => {
     const checkAndClearBasket = async () => {
       const lastPartnerId = await AsyncStorage.getItem('lastPartnerId');
@@ -198,7 +189,6 @@ export default function MenuScreen() {
       console.log('  lastPartnerId:', lastPartnerId);
       console.log('  currentPartnerId:', currentPartnerId);
 
-      // Only clear if both IDs are defined and different
       if (
         lastPartnerId !== null &&
         lastPartnerId !== String(currentPartnerId) &&
@@ -212,7 +202,6 @@ export default function MenuScreen() {
         await AsyncStorage.removeItem('notes');
       }
 
-      // Only set lastPartnerId if currentPartnerId is defined
       if (currentPartnerId !== undefined && currentPartnerId !== null) {
         await AsyncStorage.setItem('lastPartnerId', String(currentPartnerId));
         prevPartnerId.current = currentPartnerId;
@@ -232,7 +221,6 @@ export default function MenuScreen() {
       return [...prev, { ...item, quantity: 1 }];
     });
     setLastAddedId(item.id);
-    // No need to reset lastAddedId here, animation handles it
   };
 
   const totalCount = basket.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -266,7 +254,6 @@ export default function MenuScreen() {
       })
 
       setCatalog(data);
-      // Try to get min_order_value from partner
       if (data?.partner?.min_order_value !== undefined) {
         setMinOrderValue(Number(data.partner.min_order_value));
       } else {
@@ -278,17 +265,15 @@ export default function MenuScreen() {
     fetchCatalog();
   }, [partnerId]);
 
-  // Add note handler
   const handleNoteChange = (id: number, text: string) => {
     setNotes(prev => ({ ...prev, [id]: text }));
   };
 
   const handleCloseBasketModal = () => {
     setBasketModalVisible(false);
-    setNoteItemId(null); // Save and close any open note input
+    setNoteItemId(null);
   };
 
-  // Calculate how much is missing to reach min order value
   const missingAmount = minOrderValue !== null && totalValue < minOrderValue
     ? minOrderValue - totalValue
     : 0;
@@ -327,7 +312,7 @@ export default function MenuScreen() {
     <>
       <Sidebar isVisible={sidebarVisible} onClose={closeSidebar} language={language} />
       <SidebarButtonWithLogo onPress={toggleSidebar} />
-      <View style={[styles.container, { flex: 1 }]}>
+      <View style={[styles.container, { flex: 1, backgroundColor: '#f9f9f9' }]}>
         {/* Title */}
         <View style={{ marginBottom: 0 }}>
           <Text style={{ fontSize: 22, fontWeight: 'bold', marginRight: 12 }}>
@@ -338,27 +323,28 @@ export default function MenuScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingVertical: 4, paddingLeft: 2, paddingRight: 2 }}
-          style={{ marginBottom: 8 }}
+          contentContainerStyle={{ paddingVertical: 0, paddingLeft: 2, paddingRight: 2 }}
+          style={{ marginBottom: 0,maxHeight: 60, height: 60 }}
         >
           {uniqueCategories.map((cat: { id: number; name: string }) => (
             <TouchableOpacity
               key={cat.id}
               onPress={() =>
-                setSelectedCategoryId(selectedCategoryId === cat.id ? null : cat.id)
+              setSelectedCategoryId(selectedCategoryId === cat.id ? null : cat.id)
               }
               style={[
-                styles.categoryButton,
-                selectedCategoryId === cat.id && styles.categoryButtonActive,
+              styles.categoryButton,
+              selectedCategoryId === cat.id && styles.categoryButtonActive,
+              { height: 29 },
               ]}
             >
               <Text
-                style={[
-                  styles.categoryButtonText,
-                  selectedCategoryId === cat.id && styles.categoryButtonTextActive,
-                ]}
+              style={[
+                styles.categoryButtonText,
+                selectedCategoryId === cat.id && styles.categoryButtonTextActive,
+              ]}
               >
-                {cat.name}
+              {cat.name}
               </Text>
             </TouchableOpacity>
           ))}
@@ -370,8 +356,8 @@ export default function MenuScreen() {
           renderItem={renderItem}
           initialNumToRender={5}
           maxToRenderPerBatch={7}
-          windowSize={10}
-          contentContainerStyle={{ paddingBottom: 120 }} // Make sure this is >= basket bar height
+          windowSize={1000}
+          contentContainerStyle={{ paddingBottom: 200, }} // Make sure this is >= basket bar height
         />
       </View>
       {/* Basket Bar OUTSIDE the main flex container */}

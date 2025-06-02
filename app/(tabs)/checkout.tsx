@@ -5,7 +5,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, BackHandler, Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native'; // Add Pressable
+import { Alert, BackHandler, Modal, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
@@ -20,11 +20,11 @@ const PRIMARY_ADDRESS_KEY = 'primary_address';
 export default function CheckoutScreen() {
   const router = useRouter();
 
-  const { basket, setBasket, notes, setNotes, clearBasket, partnerId } = useBasket(); // <-- Add partnerId
+  const { basket, setBasket, notes, setNotes, clearBasket, partnerId } = useBasket();
   const [address, setAddress] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ longitude: number; latitude: number } | null>(null);
   const [driverNote, setDriverNote] = useState('');
-  const [editingDriverNote, setEditingDriverNote] = useState(''); // Add this line
+  const [editingDriverNote, setEditingDriverNote] = useState('');
   const [payment, setPayment] = useState<'mobilepay' | 'card' | 'bank' | null>(null);
   const [editingAddress, setEditingAddress] = useState(false);
   
@@ -83,7 +83,7 @@ export default function CheckoutScreen() {
     }
   }, [address]);
 
-  // --- Autofill user info if logged in ---
+  // Autofill user info if logged in
   useEffect(() => {
     AsyncStorage.getItem('logged_in_email').then(async (email) => {
       if (email) {
@@ -107,7 +107,6 @@ export default function CheckoutScreen() {
               email: email || '',
               phone: data.phone_number || '',
             });
-            // Save for next time
             if (data.first_name) await AsyncStorage.setItem('user_first_name', data.first_name);
             if (data.last_name) await AsyncStorage.setItem('user_last_name', data.last_name);
             if (data.phone_number) await AsyncStorage.setItem('user_phone', data.phone_number);
@@ -187,7 +186,6 @@ const sendPushToken = async () => {
         finalStatus = status;
       }
       if (finalStatus === 'granted') {
-        // Pass projectId here
         const expoPushToken = await Notifications.getExpoPushTokenAsync({
           projectId: "30572909-5581-4788-95a8-db5837a94828"
         });
@@ -203,7 +201,6 @@ const sendPushToken = async () => {
     console.log('Push token error:', e);
   }
 };
-  // Add a ref to track if user tried to submit
   const triedSubmit = useRef(false);
 
   // Validation logic
@@ -238,10 +235,8 @@ const sendPushToken = async () => {
   const missingFields = getMissingFields();
   const canSubmit = missingFields.length === 0;
 
-  // Add state for minimum preparation time (in minutes)
-  const [minPrepTime, setMinPrepTime] = useState(30); // Default to 30 minutes
+  const [minPrepTime, setMinPrepTime] = useState(30);
 
-  // Fetch minPrepTime from backend when partnerId changes
   useEffect(() => {
     async function fetchMinPrepTime() {
       if (!partnerId) return;
@@ -260,8 +255,6 @@ const sendPushToken = async () => {
     }
     fetchMinPrepTime();
   }, [partnerId]);
-
-  // Fetch opening hours and generate delivery options
   useEffect(() => {
     async function fetchHoursAndSetOptions() {
       if (!partnerId) return;
@@ -288,7 +281,6 @@ const sendPushToken = async () => {
           return;
         }
         const now = new Date();
-        // Parse opening/closing
         const [openH, openM] = today.opens_at.split(':').map(Number);
         const [closeH, closeM] = today.closes_at.split(':').map(Number);
         const openDate = new Date(now);
@@ -310,7 +302,6 @@ const sendPushToken = async () => {
         let start = new Date(now.getTime() + minPrepTime * 60000);
         if (start < openDate) start = new Date(openDate);
 
-        // Round up to next 15 min
         const minutes = start.getMinutes();
         if (minutes % 15 !== 0) {
           start.setMinutes(Math.ceil(minutes / 15) * 15, 0, 0);
@@ -328,7 +319,7 @@ const sendPushToken = async () => {
         const options = [];
         let slot = new Date(start);
         let firstSlotLabel = slot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        options.push('ASAP'); // ASAP means first slot
+        options.push('ASAP');
         slot = new Date(slot.getTime() + 15 * 60000);
 
         while (slot <= closeDate) {
@@ -406,7 +397,6 @@ const sendPushToken = async () => {
     requested_delivery_time = dt.toISOString();
   }
 
-  // Compose payload for backend
   const payload = {
     customer: {
       first_name: userInfoFields.firstName,
@@ -508,7 +498,6 @@ const sendPushToken = async () => {
   }
 };
 
-  // Add this function to reset payment fields
   const resetPaymentFields = () => {
     setCardNumber('');
     setCardExpiry('');
@@ -520,17 +509,11 @@ const sendPushToken = async () => {
     setSwift('');
   };
 
-  // Add state for delivery type
   const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
-
-  // Add state for collapsible order summary
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
-
-  // --- Delivery Fee State ---
   const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
 
-  // Fetch delivery fee when partnerId or deliveryType changes
   useEffect(() => {
     async function fetchDeliveryFee() {
       if (!partnerId || deliveryType === 'pickup') {
@@ -553,36 +536,28 @@ const sendPushToken = async () => {
     fetchDeliveryFee();
   }, [partnerId, deliveryType]);
 
-  // Calculate total with tip and delivery fee
   const totalWithTip = total + tipAmount;
   const totalWithDelivery = totalWithTip + (deliveryFee && deliveryType === 'delivery' ? deliveryFee : 0);
-
-  // Modal visibility state for each section
   const [userInfoModalVisible, setUserInfoModalVisible] = useState(false);
   const [addressModalVisible, setAddressModalVisible] = useState(false);
   const [noteModalVisible, setNoteModalVisible] = useState(false);
-  const [deliveryTimeModalVisible, setDeliveryTimeModalVisible] = useState(false); // Add this line
-
-  // Add these states for editing fields (place near other useState hooks)
+  const [deliveryTimeModalVisible, setDeliveryTimeModalVisible] = useState(false);
   const [editingUserInfoFields, setEditingUserInfoFields] = useState(userInfoFields);
   const [editingAddressQuery, setEditingAddressQuery] = useState(address);
 
-  // When opening modals, copy current values to editing states
   const openUserInfoModal = () => {
     setEditingUserInfoFields(userInfoFields);
     setUserInfoModalVisible(true);
   };
   const openAddressModal = () => {
-    setEditingAddressQuery(''); // Always empty when opening
+    setEditingAddressQuery('');
     setAddressSuggestions([]);
     setAddressModalVisible(true);
   };
 
-  // Add these states near your other useState hooks
   const [addressQuery, setAddressQuery] = useState('');
   const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
 
-  // Fetch suggestions from the endpoint
   const fetchAddressSuggestions = async (text: string) => {
     setAddressQuery(text);
     if (text.length < 2) {
@@ -603,15 +578,10 @@ const sendPushToken = async () => {
     }
   };
 
-  // Add this helper function near the top of your component
   function isValidAddress(address: string) {
-    // At least one digit (street number)
     const streetRegex = /\d+/;
-    // At least 2 letters (street name)
     const streetNameRegex = /[A-Za-zæøåÆØÅ]{2,}/;
-    // 4 or 5 digit zip code
     const zipRegex = /\b\d{4,5}\b/;
-    // City name at end, possibly with region (e.g., "Odense V", "Aarhus N", "København SØ")
     const cityRegex = /[A-Za-zæøåÆØÅ]{2,}(?: [A-Za-zæøåÆØÅ0-9]{1,3})*$/;
 
     return (
@@ -622,16 +592,12 @@ const sendPushToken = async () => {
     );
   }
 
-  // Helper to prune trailing/leading commas and extra spaces from address strings
   function pruneCommas(address: string) {
     return address.replace(/^[,\s]+|[,\s]+$/g, '').replace(/\s*,\s*/g, ' ');
   }
 
-  // Helper to parse address string into street, postal_code, city
   function parseAddress(address: string) {
-    // Remove commas and trim
     const clean = address.replace(/,/g, '').trim();
-    // Try to match: street (with number), postal code, city
     const match = clean.match(/^(.+?)\s+(\d{4,5})\s+(.+)$/);
     if (match) {
       return {
@@ -641,7 +607,6 @@ const sendPushToken = async () => {
         address_detail: '',
       };
     }
-    // fallback: try to split by last 4/5 digits
     const zipMatch = clean.match(/(.*?)(\d{4,5})\s*(.*)/);
     if (zipMatch) {
       return {
@@ -659,19 +624,16 @@ const sendPushToken = async () => {
     };
   }
 
-  // --- Delivery Time State ---
   const [deliveryTime, setDeliveryTime] = useState<'ASAP' | string>('ASAP');
   const [deliveryOptions, setDeliveryOptions] = useState<string[]>(['ASAP']);
   const [hoursLoading, setHoursLoading] = useState(false);
   const [deliveryDropdownOpen, setDeliveryDropdownOpen] = useState(false);
 
-  // Helper to get today's day index (0=Monday, 6=Sunday)
   function getTodayDayIndex() {
     const jsDay = new Date().getDay(); // 0=Sunday, 6=Saturday
     return jsDay === 0 ? 6 : jsDay - 1;
   }
 
-  // Fetch opening hours and generate delivery options
   useEffect(() => {
   async function fetchHoursAndSetOptions() {
     if (!partnerId) {
@@ -680,7 +642,6 @@ const sendPushToken = async () => {
       setHoursLoading(true);
       try {
         const todayIdx = getTodayDayIndex();
-        // Fetch all hours for partner, filter for today
         let data = await api.get(`partners/${partnerId}/hours/`).then((res) => {
           if (res.status === 200) {
             return res.data;
@@ -702,7 +663,6 @@ const sendPushToken = async () => {
           return;
         }
         const now = new Date();
-        // Parse opening/closing
         const [openH, openM] = today.opens_at.split(':').map(Number);
         const [closeH, closeM] = today.closes_at.split(':').map(Number);
         const openDate = new Date(now);
@@ -718,7 +678,6 @@ const sendPushToken = async () => {
           return;
         }
 
-        // Start from now + minPrepTime, rounded up to next 15 min
         let start = new Date(now.getTime() + minPrepTime * 60000);
         if (start < openDate) start = new Date(openDate);
 
@@ -1018,7 +977,6 @@ const sendPushToken = async () => {
                   }}
                   autoFocus
                 />
-                {/* Suggestions dropdown */}
                 {addressSuggestions.length > 0 && (
                   <View
                     style={{
@@ -1088,8 +1046,6 @@ const sendPushToken = async () => {
             </View>
           </TouchableOpacity>
         </Modal>
-
-        {/* --- Note Modal --- */}
         <Modal
           visible={noteModalVisible}
           animationType="slide"
@@ -1105,8 +1061,8 @@ const sendPushToken = async () => {
               <Text style={styles.orderDetailsSectionTitle}>{t('addNote') || "Leveringsinstruktioner"}</Text>
               <TextInput
                 placeholder={t('addNote')}
-                value={editingDriverNote} // Use temp value
-                onChangeText={setEditingDriverNote} // Only update temp value
+                value={editingDriverNote}
+                onChangeText={setEditingDriverNote}
                 style={styles.checkoutInput}
                 maxLength={50}
                 autoFocus
@@ -1115,7 +1071,7 @@ const sendPushToken = async () => {
                 <TouchableOpacity
                   style={[styles.checkoutCancelButton, { flex: 1 }]}
                   onPress={() => {
-                    setNoteModalVisible(false); // Just close, don't save
+                    setNoteModalVisible(false);
                   }}
                 >
                   <Text style={styles.checkoutCancelButtonText}>{t('cancel') || "Annuller"}</Text>
@@ -1123,7 +1079,7 @@ const sendPushToken = async () => {
                 <TouchableOpacity
                   style={[styles.checkoutConfirmButton, { flex: 1 }]}
                   onPress={() => {
-                    setDriverNote(editingDriverNote); // Save only on confirm
+                    setDriverNote(editingDriverNote);
                     setNoteModalVisible(false);
                   }}
                 >
@@ -1227,7 +1183,6 @@ const sendPushToken = async () => {
                   {t('paymentCard') || 'Kreditkort'}
                 </Text>
               </TouchableOpacity>
-              {/* MobilePay */}
               <TouchableOpacity
                 style={[
                   styles.checkoutPaymentButton,
@@ -1323,7 +1278,7 @@ const sendPushToken = async () => {
                     ]}
                     onPress={() => {
                       if (tipPercent === percent) {
-                        setTipPercent(null); // Deselect if already selected
+                        setTipPercent(null);
                       } else {
                         setTipPercent(percent);
                         setShowCustomTip(false);
@@ -1401,7 +1356,6 @@ const sendPushToken = async () => {
           </CollapsibleSection>
         </View>
 
-        {/* --- Order Summary (last dropdown before confirm) --- */}
         <View style={styles.checkoutCard}>
           <TouchableOpacity
             style={{

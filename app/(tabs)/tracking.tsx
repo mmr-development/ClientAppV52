@@ -121,8 +121,15 @@ export default function TrackingScreen() {
   useEffect(() => {
     if (!order?.id) return;
 
-    const wsUrl = `wss://3a30-77-241-136-45.ngrok-free.app/ws/orders/${order.id}/status`;
+    const wsUrl = `wss://aa3a-77-241-136-45.ngrok-free.app/ws/orders/${order.id}/status`;
     wsRef.current = new WebSocket(wsUrl);
+
+    // Wrap send to log outgoing messages
+    const origSend = wsRef.current.send.bind(wsRef.current);
+    wsRef.current.send = (data: any) => {
+      console.log('[WebSocket] Sending:', data);
+      origSend(data);
+    };
 
     wsRef.current.onopen = () => {
       console.log('[WebSocket] Connected:', wsUrl);
@@ -159,6 +166,13 @@ export default function TrackingScreen() {
     const trackingWsUrl = "wss://3a30-77-241-136-45.ngrok-free.app/ws/tracking?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZWxpdmVyeV9pZCI6MjcsIm9yZGVyX2lkIjo0NywiY3JlYXRlZF9hdCI6IjIwMjUtMDUtMzFUMTQ6NDc6MjMuNTczWiIsImlhdCI6MTc0ODcwMjg0MywiZXhwIjoxNzQ4Nzg5MjQzfQ.71l3IsZ4yy6wDvc2ew6Bl93mJJKxDv63qJbtwvWu3G8";
     trackingWsRef.current = new WebSocket(trackingWsUrl);
 
+    // Wrap send to log outgoing messages
+    const origTrackingSend = trackingWsRef.current.send.bind(trackingWsRef.current);
+    trackingWsRef.current.send = (data: any) => {
+      console.log('[Tracking WS] Sending:', data);
+      origTrackingSend(data);
+    };
+
     trackingWsRef.current.onopen = () => {
       console.log('[Tracking WS] Connected:', trackingWsUrl);
     };
@@ -191,7 +205,6 @@ export default function TrackingScreen() {
     };
   }, [order?.id]);
 
-  // Progress bar step mapping and icons
   const statusStep = (status: string) => {
     switch (status) {
       case 'pending':
@@ -244,7 +257,6 @@ export default function TrackingScreen() {
 
   const currentStep = statusStep(order?.status);
 
-  // Progress bar component
   const OrderProgressBar = ({ step, status }: { step: number; status: string }) => (
     <View style={styles.progressBarContainer}>
       {progressSteps.map((s, idx) => {
@@ -315,7 +327,6 @@ export default function TrackingScreen() {
     );
   }
 
-  // Helper for fee/tip line
   const renderFeeLine = (label: string, value: number | string, isFree?: boolean) => (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
       <Text style={{ color: styles.restaurantName.color }}>{label}</Text>
@@ -330,7 +341,6 @@ export default function TrackingScreen() {
       <Sidebar isVisible={sidebarVisible} onClose={closeSidebar} language={language} />
       <SidebarButtonWithLogo onPress={toggleSidebar} />
       <View style={styles.container}>
-        {/* Map container with courier marker */}
         <View
           style={{
             width: '100%',
@@ -383,7 +393,6 @@ export default function TrackingScreen() {
             />
           )}
         </View>
-        {/* Progress bar below map */}
         <OrderProgressBar step={currentStep} status={order.status} />
         <ScrollView contentContainerStyle={{ padding: 0 }}>
           <View style={styles.orderDetailsWrapper}>

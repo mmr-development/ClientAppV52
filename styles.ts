@@ -26,7 +26,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     minHeight: '100%',
-    paddingHorizontal: 20, // Only horizontal padding
+    paddingHorizontal: 20,
   },
     label: { 
       marginBottom: 10, 
@@ -87,7 +87,7 @@ export const styles = StyleSheet.create({
     },
     contentContainer: {
       flex: 1,
-      margin: '5%', // 5% inset from all edges
+      margin: '5%',
       padding: 16,
       backgroundColor: colors.backgroundLight,
       borderRadius: 12,
@@ -183,7 +183,6 @@ export const styles = StyleSheet.create({
       fontSize: 16,
     },
     
-    // New styles for header and sidebar button
     headerContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -428,8 +427,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   passwordInput: {
-    paddingRight: 44, // space for the eye icon
-    height: 48,       // set a fixed height for consistency
+    paddingRight: 44,
+    height: 48,
   },
   eyeButton: {
     position: 'absolute',
@@ -440,14 +439,14 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 4,
     zIndex: 2,
-    height: 48, // match input height
+    height: 48,
   },
   profileChoiceRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
-    gap: 16, // if not supported, use marginRight on button
+    gap: 16,
   },
   profileChoiceRowTop: {
     flexDirection: 'row',
@@ -466,9 +465,9 @@ export const styles = StyleSheet.create({
   profileWideButtonGroup: {
     width: '100%',
     flexDirection: 'column',
-    gap: 16,          // was 20
-    marginBottom: 24, // was 36
-    marginTop: 0,     // was 8
+    gap: 16,
+    marginBottom: 24,
+    marginTop: 0,
   },
   profileWideButton: {
     flexDirection: 'row',
@@ -478,8 +477,8 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 18, // Slightly more vertical padding
-    marginBottom: 0, // Use gap in group for spacing
+    paddingVertical: 18,
+    marginBottom: 0,
     marginTop: 0,
     marginHorizontal: 0,
     width: '100%',
@@ -506,7 +505,7 @@ export const styles = StyleSheet.create({
     elevation: 2,
   },
   profileChoiceButtonAccent: {
-    backgroundColor: colors.hover, // darker green accent
+    backgroundColor: colors.hover,
   },
   profileChoiceButtonText: {
     color: colors.white,
@@ -521,7 +520,7 @@ export const styles = StyleSheet.create({
     marginTop: 32,
     marginBottom: 8,
     paddingHorizontal: 24,
-    gap: 18, // if not supported, use marginLeft on locationToggleRow
+    gap: 18,
   },
   languageButton: {
     flexDirection: 'row',
@@ -558,7 +557,7 @@ export const styles = StyleSheet.create({
     marginRight: 8,
   },
   faqSection: {
-    marginTop: 28, // More space above FAQ
+    marginTop: 28,
     marginBottom: 36,
     backgroundColor: colors.white,
     borderRadius: 10,
@@ -593,8 +592,8 @@ export const styles = StyleSheet.create({
   welcomeContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12, // was 24
-    marginTop: 0,     // was 12
+    marginBottom: 12,
+    marginTop: 0,    
   },
   welcomeText: {
     fontSize: 20,
@@ -607,7 +606,6 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // New styles for language and location toggle buttons
   languageOptionButton: {
     padding: 12,
     borderRadius: 8,
@@ -623,7 +621,6 @@ export const styles = StyleSheet.create({
     padding: 4,
   },
   locationToggleButtonActive: {
-    // Optional: highlight when active
   },
   searchHistoryHeader: {
     fontWeight: 'bold',
@@ -633,7 +630,7 @@ export const styles = StyleSheet.create({
     marginBottom: 6,
   },
   searchHistoryList: {
-    maxHeight: 5 * 32, // ~5 entries, adjust if your row height is different
+    maxHeight: 5 * 32,
     marginBottom: 12,
   },
   basketBar: {
@@ -867,13 +864,13 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   checkoutPaymentButton: {
-    flex: 1, // Ensures equal width for both buttons
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 10,
     paddingVertical: 18,
     paddingHorizontal: 10,
-    marginHorizontal: 0, // Remove margin to avoid shrinking
+    marginHorizontal: 0,
     borderWidth: 2,
     justifyContent: 'center',
     minHeight: 60,
@@ -934,7 +931,6 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 2,
-    // Make it span both columns
     width: '100%',
   },
   checkoutConfirmButton: {
@@ -958,7 +954,7 @@ export const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   checkoutCancelButton: {
-    backgroundColor: colors.error, // Use error color for cancel
+    backgroundColor: colors.error,
     borderRadius: 12,
     paddingVertical: 18,
     marginHorizontal: 18,
@@ -1011,7 +1007,7 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
   },
   basketRemoveButton: {
-    marginLeft: 8, // was 10, reduced for better fit
+    marginLeft: 8,
     backgroundColor: '#e53935',
     borderRadius: 16,
     width: 32,
@@ -1038,10 +1034,10 @@ export const styles = StyleSheet.create({
   },
     paymentCheckmarkContainer: {
     position: 'absolute',
-    top: -12,         // Move up, halfway outside the button
-    right: -12,       // Move right, halfway outside the button
+    top: -12,
+    right: -12,
     zIndex: 2,
-    backgroundColor: 'rgba(44,182,115,0.95)', // subtle green bg for contrast
+    backgroundColor: 'rgba(44,182,115,0.95)',
     borderRadius: 16,
     padding: 2,
     borderWidth: 2,
@@ -1062,7 +1058,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12, // Add gap for spacing between image and text
+    gap: 12,
   },
   menuProductImageWrapper: {
     width: 54,
@@ -1266,7 +1262,7 @@ export const styles = StyleSheet.create({
     marginTop: 2,
     backgroundColor: '#fcfcfc',
     borderRadius: 8,
-    maxHeight: 132, // 3 entries * 44px each (adjust as needed)
+    maxHeight: 132,
     borderColor: '#ddd',
     borderWidth: 1,
     shadowColor: '#000',
@@ -1442,7 +1438,7 @@ deliveryDropdownListAbsolute: {
   position: 'absolute',
   left: 0,
   right: 0,
-  top: 60, // adjust if needed to match the dropdown button's position
+  top: 60,
   backgroundColor: colors.white,
   borderRadius: 10,
   borderWidth: 1,
@@ -1464,9 +1460,6 @@ deliveryTypeToggleWrapper: {
   marginBottom: 6,
   height: 44,
   marginHorizontal: 0,
-  // width: '100%', // REMOVE THIS
-  // maxWidth: 420, // REMOVE THIS
-  // alignSelf: 'stretch', // REMOVE THIS
 },
 deliveryTypeToggleOption: {
   flex: 1,
@@ -1474,10 +1467,9 @@ deliveryTypeToggleOption: {
   justifyContent: 'center',
   zIndex: 2,
   paddingVertical: 0,
-  minWidth: 0, // Prevents growing wider than needed
+  minWidth: 0,
 },
 deliveryTypeToggleOptionActive: {
-  // No background, slider is behind
 },
 deliveryTypeToggleText: {
   color: '#1B5E20',
@@ -1497,9 +1489,6 @@ deliveryTypeToggleSlider: {
   backgroundColor: '#2cb673',
   borderRadius: 24,
   zIndex: 1,
-  // Remove transition properties for native
-  // transitionProperty: 'left',
-  // transitionDuration: '200ms',
 },
 ordersModalWrapper: {
   borderWidth: 1.5,

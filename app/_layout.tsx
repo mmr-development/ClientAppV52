@@ -8,7 +8,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { BasketProvider } from '../contexts/BasketContext';
-import { LanguageProvider } from '../contexts/LanguageContext'; // adjust path if needed
+import { LanguageProvider } from '../contexts/LanguageContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -19,12 +19,8 @@ export default function RootLayout() {
   const notificationListener = useRef<any>(null);
 
   useEffect(() => {
-    // Listen for notifications when app is foregrounded
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      // Optionally show an in-app message or update UI
     });
-
-    // Handle notification response (when user taps)
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
       if (data.orderId) {
