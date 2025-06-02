@@ -1,6 +1,7 @@
 import { FontAwesome, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -13,6 +14,8 @@ import { useSidebar } from '../../hooks/useSidebar';
 import { styles } from '../../styles';
 
 export default function TrackingScreen() {
+  const params = useLocalSearchParams();
+
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,20 +32,42 @@ export default function TrackingScreen() {
   const t = (key: keyof typeof translations["da"]) =>
     (translations[language] as typeof translations["da"])[key] || key;
 
-  const fetchOrderFromApi = async (isInitial = false) => {
+  // Accept order from params if present
+  useEffect(() => {
+    if (params?.order) {
+      try {
+        const parsedOrder = JSON.parse(params.order as string);
+        setOrder(parsedOrder);
+        setFallbackUsed(false);
+        setInitialLoad(false);
+      } catch (e) {
+        // fallback to fetch if parsing fails
+        fetchOrderFromApi(true);
+      }
+    } else {
+      fetchOrderFromApi(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.order]);
+
+  // Update fetchOrderFromApi to accept an orderId
+  const fetchOrderFromApi = async (isInitial = false, orderId?: number) => {
     if (fallbackUsed || isInitial || initialLoad) setLoading(true);
     setError(null);
     try {
-      let data = await api.get(`orders/?limit=1`).then((res) => {
+      // If orderId is provided, fetch that specific order
+      let url = orderId ? `orders/${orderId}/` : `orders/?limit=1`;
+      let data = await api.get(url).then((res) => {
         if (res.status === 200) {
           return res.data;
-        }else {
+        } else {
           throw new Error(res.statusText || t('errorMsg'));
         }
-      })
-      console.log('Fetched order data:', data);
+      });
       let apiOrder = null;
-      if (Array.isArray(data) && data.length > 0) {
+      if (orderId && data && typeof data === 'object' && data.id) {
+        apiOrder = data;
+      } else if (Array.isArray(data) && data.length > 0) {
         apiOrder = data[0];
       } else if (Array.isArray(data.orders) && data.orders.length > 0) {
         apiOrder = data.orders[0];
@@ -89,24 +114,40 @@ export default function TrackingScreen() {
  //refetch 
   useFocusEffect(
     React.useCallback(() => {
-      fetchOrderFromApi(true);
+      if (params?.order) {
+        try {
+          const parsedOrder = JSON.parse(params.order as string);
+          setOrder(parsedOrder);
+          setFallbackUsed(false);
+          setInitialLoad(false);
+        } catch {
+          let orderId: number | undefined = undefined;
+          try {
+            const parsedOrder = JSON.parse(params.order as string);
+            orderId = parsedOrder?.id;
+          } catch {}
+          fetchOrderFromApi(true, orderId);
+        }
+      } else {
+        fetchOrderFromApi(true);
+      }
       return () => {
         if (intervalRef.current) clearInterval(intervalRef.current);
       };
-    }, [])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [params?.order])
   );
 
-  // Polling logic
   useEffect(() => {
     if (fallbackUsed) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
-        fetchOrderFromApi();
+        fetchOrderFromApi(false, order?.id);
       }, 30000);
     } else if (order) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
-        fetchOrderFromApi();
+        fetchOrderFromApi(false, order?.id);
       }, 60000);
     }
     return () => {
@@ -166,7 +207,6 @@ export default function TrackingScreen() {
     const trackingWsUrl = "wss://3a30-77-241-136-45.ngrok-free.app/ws/tracking?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZWxpdmVyeV9pZCI6MjcsIm9yZGVyX2lkIjo0NywiY3JlYXRlZF9hdCI6IjIwMjUtMDUtMzFUMTQ6NDc6MjMuNTczWiIsImlhdCI6MTc0ODcwMjg0MywiZXhwIjoxNzQ4Nzg5MjQzfQ.71l3IsZ4yy6wDvc2ew6Bl93mJJKxDv63qJbtwvWu3G8";
     trackingWsRef.current = new WebSocket(trackingWsUrl);
 
-    // Wrap send to log outgoing messages
     const origTrackingSend = trackingWsRef.current.send.bind(trackingWsRef.current);
     trackingWsRef.current.send = (data: any) => {
       console.log('[Tracking WS] Sending:', data);

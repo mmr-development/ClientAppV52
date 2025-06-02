@@ -27,9 +27,6 @@ export default function CheckoutScreen() {
   const [editingDriverNote, setEditingDriverNote] = useState('');
   const [payment, setPayment] = useState<'mobilepay' | 'card' | 'bank' | null>(null);
   const [editingAddress, setEditingAddress] = useState(false);
-  
-
-  // User info state
   const [userInfo, setUserInfo] = useState<any>(null);
   const [userInfoFields, setUserInfoFields] = useState({
     firstName: '',
@@ -69,21 +66,18 @@ export default function CheckoutScreen() {
       ? Math.max(0, Math.round(Number(customTip)))
       : 0;
 
-  // Load default address from AsyncStorage on mount
   useEffect(() => {
     AsyncStorage.getItem(PRIMARY_ADDRESS_KEY).then(addr => {
       if (addr) setAddress(addr);
     });
   }, []);
 
-  // Save address to AsyncStorage when changed and not empty
   useEffect(() => {
     if (address) {
       AsyncStorage.setItem(PRIMARY_ADDRESS_KEY, address);
     }
   }, [address]);
 
-  // Autofill user info if logged in
   useEffect(() => {
     AsyncStorage.getItem('logged_in_email').then(async (email) => {
       if (email) {
@@ -203,7 +197,6 @@ const sendPushToken = async () => {
 };
   const triedSubmit = useRef(false);
 
-  // Validation logic
   const getMissingFields = () => {
     const missing: string[] = [];
     if (!userInfoFields.firstName) missing.push(t('firstName') || 'First name');
@@ -214,7 +207,7 @@ const sendPushToken = async () => {
     if (!payment) missing.push(t('paymentMethod') || 'Payment method');
     if (basket.length === 0) missing.push(t('orderSummary') || 'Order');
 
-    // Payment-specific
+
     if (payment === 'card') {
       if (!cardNumber) missing.push(t('cardNumber') || 'Card number');
       if (!cardExpiry) missing.push(t('cardExpiry') || 'Expiry');
@@ -290,7 +283,6 @@ const sendPushToken = async () => {
 
         console.log('now:', now, 'openDate:', openDate, 'closeDate:', closeDate);
 
-        // If now is after closing, only ASAP
         if (now > closeDate) {
           setDeliveryOptions(['ASAP']);
           setDeliveryTime('ASAP');
@@ -298,7 +290,6 @@ const sendPushToken = async () => {
           return;
         }
 
-        // Start from now + minPrepTime, rounded up to next 15 min
         let start = new Date(now.getTime() + minPrepTime * 60000);
         if (start < openDate) start = new Date(openDate);
 
@@ -670,7 +661,6 @@ const sendPushToken = async () => {
         const closeDate = new Date(now);
         closeDate.setHours(closeH, closeM, 0, 0);
 
-        // If now is after closing, only ASAP
         if (now > closeDate) {
           setDeliveryOptions(['ASAP']);
           setDeliveryTime('ASAP');
@@ -681,7 +671,6 @@ const sendPushToken = async () => {
         let start = new Date(now.getTime() + minPrepTime * 60000);
         if (start < openDate) start = new Date(openDate);
 
-        // Round up to next 15 min
         const minutes = start.getMinutes();
         if (minutes % 15 !== 0) {
           start.setMinutes(Math.ceil(minutes / 15) * 15, 0, 0);

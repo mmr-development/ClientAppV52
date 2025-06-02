@@ -83,7 +83,9 @@ export default function OrdersScreen() {
 
 const handleOrderPress = (order: any) => {
   console.log('Opening order from orders.tsx:', order);
-  if (['pending', 'ready'].includes(order.status)) {
+  // Only open tracking for orders NOT delivered/cancelled/failed
+  if (!['delivered', 'cancelled', 'failed'].includes(order.status)) {
+    // Pass the order as a param to tracking
     router.push({
       pathname: '/tracking',
       params: { order: JSON.stringify(order) },
@@ -130,8 +132,25 @@ const handleOrderPress = (order: any) => {
                   marginBottom: 12,
                   borderWidth: 1,
                   borderColor: '#b1e2c6',
+                  position: 'relative',
                 }}
               >
+                {!['delivered', 'cancelled', 'failed'].includes(order.status) && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 10,
+                      right: 10,
+                      backgroundColor: '#e53935',
+                      borderRadius: 16,
+                      paddingVertical: 2,
+                      paddingHorizontal: 12,
+                      zIndex: 10,
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>Active</Text>
+                  </View>
+                )}
                 <Text style={{ fontWeight: 'bold', fontSize: 16 }}>
                   {t.order} #{order.id}
                 </Text>
