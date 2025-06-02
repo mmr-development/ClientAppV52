@@ -31,14 +31,20 @@ export async function clearTokens() {
 }
 
 
-const validateUrl = (url : string) => {
+const validateUrl = (url: string) => {
   if (!url.includes('?') && !url.endsWith('/')) {
-      return url + '/';
-  }
-  else if (url.includes('?') && !url.substring(url.indexOf('?') - 1, url.indexOf('?')).endsWith('/')) {
-      return url.substring(0, url.indexOf('?')) + '/' + url.substring(url.indexOf('?'));
+    return url + '/';
   }
   return url;
+};
+
+export function getPublicImageUrl(path: string) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) {
+    return `${baseurl}public${path}`;
+  }
+  return path;
 }
 
 export const reauthenticate = async () => {
@@ -56,7 +62,7 @@ export const reauthenticate = async () => {
           window.location.href = '/';
       } else if (res.status === 200) {
           return res.json().then(async (data) => {
-              await saveTokens(data.access, data.refresh);
+              await saveTokens(data.access_token, data.refresh_token);
           });
       }
   });
@@ -90,12 +96,8 @@ export const post = async (path: string, body: any, tried: boolean = false): Pro
     data = text;
   } 
   console.log('Sign-in response data:', data);
-  console.log(path)
-  console.log(path == 'auth/sign-in/?client_id=courier', 'your mother')
-
-  if (path == 'auth/sign-in/?client_id=courier') {
-    console.log(data.access_token, data.refresh_token);
-    console.log('passed');
+  if (path == 'auth/sign-in/?client_id=customer') {
+    console.log('access_token:', data.access_token, 'refresh_token:', data.refresh_token);
     await saveTokens(data.access_token, data.refresh_token);
     console.log('Saved tokens:', await getAccessToken(), await getRefreshToken());
   }

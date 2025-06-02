@@ -155,7 +155,7 @@ export default function ProfileScreen() {
   const handleSignIn = async () => {
     setLoading(true);
     try {
-      let data = await api.post('auth/sign-in/?client_id=courier', {
+      let data = await api.post('auth/sign-in/?client_id=customer', {
         email,
         password,
       }).then((res) => {

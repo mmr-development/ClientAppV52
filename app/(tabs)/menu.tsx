@@ -252,27 +252,30 @@ export default function MenuScreen() {
   const { language, setLanguage } = useLanguage();
   const t = (key: keyof typeof translations["da"]) => (translations[language] as Record<string, string>)[key];
 
-  useEffect(async () => {
-    if (!partnerId) return;
-    setLoading(true);
-    setSelectedCategoryId(null);
-    let data = await api.get(`partners/${partnerId}/catalogs/full/?partner_id=${partnerId}`).then((res) => {
-      if (res.status === 200) {
-        return res.data;
-      } else {
-        throw new Error(`Failed to fetch catalog: ${res.statusText}`);
-      }
-    })
+  useEffect(() => {
+    const fetchCatalog = async () => {
+      if (!partnerId) return;
+      setLoading(true);
+      setSelectedCategoryId(null);
+      let data = await api.get(`partners/${partnerId}/catalogs/full/?partner_id=${partnerId}`).then((res) => {
+        if (res.status === 200) {
+          return res.data;
+        } else {
+          throw new Error(`Failed to fetch catalog: ${res.statusText}`);
+        }
+      })
 
-    setCatalog(data);
-    // Try to get min_order_value from partner
-    if (data?.partner?.min_order_value !== undefined) {
-      setMinOrderValue(Number(data.partner.min_order_value));
-    } else {
-      setMinOrderValue(null);
-    }
-    setLoading(false);
-    setNoteItemId(null);
+      setCatalog(data);
+      // Try to get min_order_value from partner
+      if (data?.partner?.min_order_value !== undefined) {
+        setMinOrderValue(Number(data.partner.min_order_value));
+      } else {
+        setMinOrderValue(null);
+      }
+      setLoading(false);
+      setNoteItemId(null);
+    };
+    fetchCatalog();
   }, [partnerId]);
 
   // Add note handler

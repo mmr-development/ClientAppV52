@@ -5,6 +5,7 @@ import { ActivityIndicator, Dimensions, FlatList, Image, SafeAreaView, ScrollVie
 import { Sidebar } from '../../components/Sidebar';
 import { SidebarButtonWithLogo } from '../../components/SidebarButton';
 import * as api from '../../constants/API';
+import { getPublicImageUrl } from '../../constants/API';
 import translations from '../../constants/locales';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSidebar } from '../../hooks/useSidebar';
@@ -58,7 +59,7 @@ export default function AddressAutocomplete() {
         restaurants.map(async (r: any) => {
           try {
             const data = await api.get(`partners/${r.id}/hours/`).then((res) => {
-              if (res.staus == 200){
+              if (res.status == 200){
                 return res.data;
               }else {
                 throw new Error('Failed to fetch hours');
@@ -203,15 +204,23 @@ export default function AddressAutocomplete() {
     }
     if (!city) return;
     setLoadingRestaurants(true);
-    api.get(`partners/?city=${encodeURIComponent(city)}`)
-      .then(res => res.json())
+
+    // Log the city and the URL being fetched
+    const url = `partners/?city=${encodeURIComponent(city)}`;
+    console.log('Fetching restaurants for city:', city, 'URL:', url);
+
+    api.get(url)
+      .then(res => {
+        console.log('API response:', res);
+        return res.data;
+      })
       .then(data => {
+        console.log('Fetched data for city', city, ':', data);
         const filtered = (data.partners || []).filter(
           (p: any) => p.business_type?.name === 'Restaurant'
         );
         setRestaurants(filtered);
         const allCategories = filtered.map((r: any) => r.category?.name).filter(Boolean);
-        console.log(allCategories)
         setCategories(Array.from(new Set(allCategories)));
       })
       .catch((err) => {
@@ -378,7 +387,6 @@ export default function AddressAutocomplete() {
                             <Text style={{ color: open ? 'green' : 'gray', marginTop: 2 }}>
                               {getTodayHoursString(hours)}
                             </Text>
-                            {/* --- Prep time and min order value, each on its own line, styled like address --- */}
                             {(details.minPreparation !== undefined || details.maxPreparation !== undefined) && (
                               <Text style={styles.restaurantAddress}>
                                 {t('prepTime') || 'Prep time'}{' '}
