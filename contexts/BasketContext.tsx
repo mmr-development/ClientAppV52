@@ -6,7 +6,6 @@ type BasketItem = {
   name: string;
   price: number;
   quantity: number;
-  // ...add other fields as needed
 };
 
 type Notes = { [id: number]: string };
@@ -18,7 +17,7 @@ type BasketContextType = {
   setNotes: React.Dispatch<React.SetStateAction<Notes>>;
   clearBasket: () => void;
   partnerId?: number;
-  setPartnerId: (id: number | undefined) => void; // <-- Add this line
+  setPartnerId: (id: number | undefined) => void;
 };
 
 const BasketContext = createContext<BasketContextType | undefined>(undefined);
@@ -37,7 +36,6 @@ export const BasketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
   }, []);
 
-  // Save basket/notes to AsyncStorage whenever they change
   useEffect(() => {
     AsyncStorage.setItem('basket', JSON.stringify(basket));
   }, [basket]);

@@ -57,7 +57,7 @@ const translations = {
     lorem: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam euismod, urna eu tincidunt consectetur, nisi nisl aliquam enim, eget facilisis enim urna eu enim. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.",
     enterEmail: "Indtast din email",
     enterPassword: "Indtast din adgangskode",
-    for: "til", // Danish (or use "til" if you want proper Danish)
+    for: "til",
     yourBasket: "Din kurv",
     basketEmpty: "Kurven er tom.",
     continueOrdering: "Fortsæt bestilling",

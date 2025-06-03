@@ -1,6 +1,7 @@
 import { FontAwesome, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -13,6 +14,8 @@ import { useSidebar } from '../../hooks/useSidebar';
 import { styles } from '../../styles';
 
 export default function TrackingScreen() {
+  const params = useLocalSearchParams();
+
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,29 +23,44 @@ export default function TrackingScreen() {
   const [initialLoad, setInitialLoad] = useState(true);
   const [courierLocation, setCourierLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationHistory, setLocationHistory] = useState<{ latitude: number; longitude: number }[]>([]);
-
   const { sidebarVisible, toggleSidebar, closeSidebar } = useSidebar();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Language context
   const { language } = useLanguage();
   const t = (key: keyof typeof translations["da"]) =>
     (translations[language] as typeof translations["da"])[key] || key;
 
-  const fetchOrderFromApi = async (isInitial = false) => {
+  useEffect(() => {
+    if (params?.order) {
+      try {
+        const parsedOrder = JSON.parse(params.order as string);
+        setOrder(parsedOrder);
+        setFallbackUsed(false);
+        setInitialLoad(false);
+      } catch (e) {
+        fetchOrderFromApi(true);
+      }
+    } else {
+      fetchOrderFromApi(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.order]);
+
+  const fetchOrderFromApi = async (isInitial = false, orderId?: number) => {
     if (fallbackUsed || isInitial || initialLoad) setLoading(true);
     setError(null);
     try {
-      let data = await api.get(`orders/?limit=1`).then((res) => {
+      let url = orderId ? `orders/${orderId}/` : `orders/?limit=1`;
+      let data = await api.get(url).then((res) => {
         if (res.status === 200) {
           return res.data;
-        }else {
+        } else {
           throw new Error(res.statusText || t('errorMsg'));
         }
-      })
-      console.log('Fetched order data:', data);
+      });
       let apiOrder = null;
-      if (Array.isArray(data) && data.length > 0) {
+      if (orderId && data && typeof data === 'object' && data.id) {
+        apiOrder = data;
+      } else if (Array.isArray(data) && data.length > 0) {
         apiOrder = data[0];
       } else if (Array.isArray(data.orders) && data.orders.length > 0) {
         apiOrder = data.orders[0];
@@ -89,24 +107,40 @@ export default function TrackingScreen() {
  //refetch 
   useFocusEffect(
     React.useCallback(() => {
-      fetchOrderFromApi(true);
+      if (params?.order) {
+        try {
+          const parsedOrder = JSON.parse(params.order as string);
+          setOrder(parsedOrder);
+          setFallbackUsed(false);
+          setInitialLoad(false);
+        } catch {
+          let orderId: number | undefined = undefined;
+          try {
+            const parsedOrder = JSON.parse(params.order as string);
+            orderId = parsedOrder?.id;
+          } catch {}
+          fetchOrderFromApi(true, orderId);
+        }
+      } else {
+        fetchOrderFromApi(true);
+      }
       return () => {
         if (intervalRef.current) clearInterval(intervalRef.current);
       };
-    }, [])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [params?.order])
   );
 
-  // Polling logic
   useEffect(() => {
     if (fallbackUsed) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
-        fetchOrderFromApi();
+        fetchOrderFromApi(false, order?.id);
       }, 30000);
     } else if (order) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       intervalRef.current = setInterval(() => {
-        fetchOrderFromApi();
+        fetchOrderFromApi(false, order?.id);
       }, 60000);
     }
     return () => {
@@ -121,8 +155,14 @@ export default function TrackingScreen() {
   useEffect(() => {
     if (!order?.id) return;
 
-    const wsUrl = `wss://3a30-77-241-136-45.ngrok-free.app/ws/orders/${order.id}/status`;
+    const wsUrl = `wss://aa3a-77-241-136-45.ngrok-free.app/ws/orders/${order.id}/status`;
     wsRef.current = new WebSocket(wsUrl);
+
+    const origSend = wsRef.current.send.bind(wsRef.current);
+    wsRef.current.send = (data: any) => {
+      console.log('[WebSocket] Sending:', data);
+      origSend(data);
+    };
 
     wsRef.current.onopen = () => {
       console.log('[WebSocket] Connected:', wsUrl);
@@ -159,6 +199,12 @@ export default function TrackingScreen() {
     const trackingWsUrl = "wss://3a30-77-241-136-45.ngrok-free.app/ws/tracking?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZWxpdmVyeV9pZCI6MjcsIm9yZGVyX2lkIjo0NywiY3JlYXRlZF9hdCI6IjIwMjUtMDUtMzFUMTQ6NDc6MjMuNTczWiIsImlhdCI6MTc0ODcwMjg0MywiZXhwIjoxNzQ4Nzg5MjQzfQ.71l3IsZ4yy6wDvc2ew6Bl93mJJKxDv63qJbtwvWu3G8";
     trackingWsRef.current = new WebSocket(trackingWsUrl);
 
+    const origTrackingSend = trackingWsRef.current.send.bind(trackingWsRef.current);
+    trackingWsRef.current.send = (data: any) => {
+      console.log('[Tracking WS] Sending:', data);
+      origTrackingSend(data);
+    };
+
     trackingWsRef.current.onopen = () => {
       console.log('[Tracking WS] Connected:', trackingWsUrl);
     };
@@ -191,7 +237,6 @@ export default function TrackingScreen() {
     };
   }, [order?.id]);
 
-  // Progress bar step mapping and icons
   const statusStep = (status: string) => {
     switch (status) {
       case 'pending':
@@ -244,7 +289,6 @@ export default function TrackingScreen() {
 
   const currentStep = statusStep(order?.status);
 
-  // Progress bar component
   const OrderProgressBar = ({ step, status }: { step: number; status: string }) => (
     <View style={styles.progressBarContainer}>
       {progressSteps.map((s, idx) => {
@@ -315,7 +359,6 @@ export default function TrackingScreen() {
     );
   }
 
-  // Helper for fee/tip line
   const renderFeeLine = (label: string, value: number | string, isFree?: boolean) => (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
       <Text style={{ color: styles.restaurantName.color }}>{label}</Text>
@@ -329,63 +372,61 @@ export default function TrackingScreen() {
     <>
       <Sidebar isVisible={sidebarVisible} onClose={closeSidebar} language={language} />
       <SidebarButtonWithLogo onPress={toggleSidebar} />
-      <View style={styles.container}>
-        {/* Map container with courier marker */}
-        <View
-          style={{
-            width: '100%',
-            height: 180,
-            backgroundColor: '#e0e0e0',
-            borderRadius: 16,
-            marginBottom: 18,
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: '#b1e2c6',
-            overflow: 'hidden',
-          }}
-        >
-          {courierLocation ? (
-            <MapView
-              style={{ width: '100%', height: '100%' }}
-              initialRegion={{
-                latitude: courierLocation.latitude,
-                longitude: courierLocation.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-              region={{
-                latitude: courierLocation.latitude,
-                longitude: courierLocation.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-            >
-              <Marker
-                coordinate={courierLocation}
-                title="Courier"
-                description="Current courier location"
-                pinColor="#2cb673"
-              />
-              {locationHistory.length > 1 && (
-                <Polyline
-                  coordinates={locationHistory}
-                  strokeColor="#2cb673"
-                  strokeWidth={3}
+      <ScrollView style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
+        <View style={styles.container}>
+          <View
+            style={{
+              width: '100%',
+              height: 180,
+              backgroundColor: '#e0e0e0',
+              borderRadius: 16,
+              marginBottom: 18,
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: '#b1e2c6',
+              overflow: 'hidden',
+            }}
+          >
+            {courierLocation ? (
+              <MapView
+                style={{ width: '100%', height: '100%' }}
+                initialRegion={{
+                  latitude: courierLocation.latitude,
+                  longitude: courierLocation.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+                region={{
+                  latitude: courierLocation.latitude,
+                  longitude: courierLocation.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
+                }}
+              >
+                <Marker
+                  coordinate={courierLocation}
+                  title="Courier"
+                  description="Current courier location"
+                  pinColor="#2cb673"
                 />
-              )}
-            </MapView>
-          ) : (
-            <Image
-              source={require('../../assets/images/yourmom.png')}
-              style={{ width: 180, height: 80, resizeMode: 'contain' }}
-              accessibilityLabel="Logo"
-            />
-          )}
-        </View>
-        {/* Progress bar below map */}
-        <OrderProgressBar step={currentStep} status={order.status} />
-        <ScrollView contentContainerStyle={{ padding: 0 }}>
+                {locationHistory.length > 1 && (
+                  <Polyline
+                    coordinates={locationHistory}
+                    strokeColor="#2cb673"
+                    strokeWidth={3}
+                  />
+                )}
+              </MapView>
+            ) : (
+              <Image
+                source={require('../../assets/images/yourmom.png')}
+                style={{ width: 180, height: 80, resizeMode: 'contain' }}
+                accessibilityLabel="Logo"
+              />
+            )}
+          </View>
+          <OrderProgressBar step={currentStep} status={order.status} />
           <View style={styles.orderDetailsWrapper}>
             <Text style={styles.orderDetailsTitle}>
               {order.id ? `${t('order')} #${order.id}` : t('order')}
@@ -445,8 +486,8 @@ export default function TrackingScreen() {
               </View>
             )}
           </View>
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
     </>
   );
 }
