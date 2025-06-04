@@ -155,7 +155,7 @@ export default function TrackingScreen() {
   useEffect(() => {
     if (!order?.id) return;
 
-    const wsUrl = `wss://aa3a-77-241-136-45.ngrok-free.app/ws/orders/${order.id}/status`;
+    const wsUrl = `wss://api.mmr-development.dk/ws/orders/${order.id}/status`;
     wsRef.current = new WebSocket(wsUrl);
 
     const origSend = wsRef.current.send.bind(wsRef.current);
@@ -196,7 +196,7 @@ export default function TrackingScreen() {
       console.log('[WebSocket] Closed');
     };
 
-    const trackingWsUrl = "wss://3a30-77-241-136-45.ngrok-free.app/ws/tracking?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZWxpdmVyeV9pZCI6MjcsIm9yZGVyX2lkIjo0NywiY3JlYXRlZF9hdCI6IjIwMjUtMDUtMzFUMTQ6NDc6MjMuNTczWiIsImlhdCI6MTc0ODcwMjg0MywiZXhwIjoxNzQ4Nzg5MjQzfQ.71l3IsZ4yy6wDvc2ew6Bl93mJJKxDv63qJbtwvWu3G8";
+    const trackingWsUrl = "wss://api.mmr-development.dk/ws/tracking?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZWxpdmVyeV9pZCI6MjcsIm9yZGVyX2lkIjo0NywiY3JlYXRlZF9hdCI6IjIwMjUtMDUtMzFUMTQ6NDc6MjMuNTczWiIsImlhdCI6MTc0ODcwMjg0MywiZXhwIjoxNzQ4Nzg5MjQzfQ.71l3IsZ4yy6wDvc2ew6Bl93mJJKxDv63qJbtwvWu3G8";
     trackingWsRef.current = new WebSocket(trackingWsUrl);
 
     const origTrackingSend = trackingWsRef.current.send.bind(trackingWsRef.current);
